@@ -19,7 +19,7 @@ Follow the [react-native-svg installation guide](https://github.com/software-man
 ## Usage
 
 ```tsx
-import { HeatmapCalendar } from '@rific/react-native-heatmap'
+import Heatmap from '@rific/react-native-heatmap'
 
 const data = [
   { date: '2026-01-15', value: 3 },
@@ -29,7 +29,7 @@ const data = [
 
 export default function App() {
   return (
-    <HeatmapCalendar
+    <Heatmap.Calendar
       data={data}
       onDayPress={(point, date) => console.log(date, point)}
     />
@@ -65,13 +65,13 @@ A radial gradient blooms from the center of each cell — dim at the center, ful
 A circle grows inside a neutral background rectangle. A small dot means low activity; a filled square means high activity.
 
 ```tsx
-<HeatmapCalendar data={data} cellMode='density' />
+<Heatmap.Calendar data={data} cellMode='density' />
 ```
 
 ## Color scale
 
 ```tsx
-<HeatmapCalendar
+<Heatmap.Calendar
   data={data}
   colorScale={{
     thresholds: [1, 4, 8, 16],   // 4 thresholds → 5 colors
@@ -86,7 +86,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 ## Theme
 
 ```tsx
-<HeatmapCalendar
+<Heatmap.Calendar
   data={data}
   theme={{
     cellSize: 14,
@@ -104,7 +104,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 ## Custom tooltip
 
 ```tsx
-<HeatmapCalendar
+<Heatmap.Calendar
   data={data}
   renderTooltip={({ date, value }) => (
     <View style={styles.tooltip}>
@@ -119,14 +119,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 All types are exported:
 
 ```ts
-import type {
-  CellMode,
-  ColorScale,
-  DataPoint,
-  HeatmapCalendarProps,
-  HeatmapTheme,
-  TooltipData,
-} from '@rific/react-native-heatmap'
+import Heatmap, { type CellMode, type ColorScale, type DataPoint, type HeatmapProps, type HeatmapTheme, type TooltipData } from '@rific/react-native-heatmap'
 ```
 
 ## Development
