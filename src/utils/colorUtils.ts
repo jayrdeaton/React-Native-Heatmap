@@ -1,30 +1,14 @@
 import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
+import { defaultColorScale, defaultTheme } from '../constants'
 
-export const DEFAULT_COLOR_SCALE: ColorScale = {
-  thresholds: [1, 4, 8, 16],
-  colors: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
-  emptyColor: '#ebedf0'
-}
-
-export const DEFAULT_THEME: HeatmapTheme = {
-  cellSize: 14,
-  cellRadius: 2,
-  gutterSize: 2,
-  monthLabelColor: '#57606a',
-  dayLabelColor: '#57606a',
-  backgroundColor: 'transparent',
-  tooltipBackgroundColor: '#1b1f23',
-  tooltipTextColor: '#ffffff',
-  monthLabelHeight: 18,
-  dayLabelWidth: 28
-}
+export { defaultColorScale, defaultTheme }
 
 export function mergeColorScale(partial?: Partial<ColorScale>): ColorScale {
-  return { ...DEFAULT_COLOR_SCALE, ...partial }
+  return { ...defaultColorScale, ...partial }
 }
 
 export function mergeTheme(partial?: Partial<HeatmapTheme>): HeatmapTheme {
-  return { ...DEFAULT_THEME, ...partial }
+  return { ...defaultTheme, ...partial }
 }
 
 export function getColorForValue(value: number | undefined, scale: ColorScale): string {

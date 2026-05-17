@@ -1,14 +1,14 @@
 import type { ColorScale, DataPoint } from '../../types'
-import { buildDataMap, DEFAULT_COLOR_SCALE, DEFAULT_THEME, getColorForValue, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
+import { buildDataMap, defaultColorScale, defaultTheme, getColorForValue, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
 
-describe('DEFAULT_COLOR_SCALE', () => {
+describe('defaultColorScale', () => {
   it('has 4 thresholds and 5 colors', () => {
-    expect(DEFAULT_COLOR_SCALE.thresholds).toHaveLength(4)
-    expect(DEFAULT_COLOR_SCALE.colors).toHaveLength(5)
+    expect(defaultColorScale.thresholds).toHaveLength(4)
+    expect(defaultColorScale.colors).toHaveLength(5)
   })
 
   it('thresholds are in ascending order', () => {
-    const { thresholds } = DEFAULT_COLOR_SCALE
+    const { thresholds } = defaultColorScale
     for (let i = 1; i < thresholds.length; i++) {
       expect(thresholds[i]).toBeGreaterThan(thresholds[i - 1])
     }
@@ -47,9 +47,9 @@ describe('getColorForValue', () => {
   })
 
   it('works with the default color scale', () => {
-    expect(getColorForValue(0, DEFAULT_COLOR_SCALE)).toBe(DEFAULT_COLOR_SCALE.emptyColor)
-    expect(getColorForValue(1, DEFAULT_COLOR_SCALE)).toBe(DEFAULT_COLOR_SCALE.colors[1])
-    expect(getColorForValue(16, DEFAULT_COLOR_SCALE)).toBe(DEFAULT_COLOR_SCALE.colors[4])
+    expect(getColorForValue(0, defaultColorScale)).toBe(defaultColorScale.emptyColor)
+    expect(getColorForValue(1, defaultColorScale)).toBe(defaultColorScale.colors[1])
+    expect(getColorForValue(16, defaultColorScale)).toBe(defaultColorScale.colors[4])
   })
 })
 
@@ -131,25 +131,25 @@ describe('buildDataMap', () => {
 describe('mergeColorScale', () => {
   it('returns defaults when called with no args', () => {
     const merged = mergeColorScale()
-    expect(merged).toEqual(DEFAULT_COLOR_SCALE)
+    expect(merged).toEqual(defaultColorScale)
   })
 
   it('overrides only the provided fields', () => {
     const merged = mergeColorScale({ emptyColor: '#fff' })
     expect(merged.emptyColor).toBe('#fff')
-    expect(merged.thresholds).toEqual(DEFAULT_COLOR_SCALE.thresholds)
-    expect(merged.colors).toEqual(DEFAULT_COLOR_SCALE.colors)
+    expect(merged.thresholds).toEqual(defaultColorScale.thresholds)
+    expect(merged.colors).toEqual(defaultColorScale.colors)
   })
 })
 
 describe('mergeTheme', () => {
   it('returns defaults when called with no args', () => {
-    expect(mergeTheme()).toEqual(DEFAULT_THEME)
+    expect(mergeTheme()).toEqual(defaultTheme)
   })
 
   it('overrides only the provided fields', () => {
     const merged = mergeTheme({ cellSize: 20 })
     expect(merged.cellSize).toBe(20)
-    expect(merged.gutterSize).toBe(DEFAULT_THEME.gutterSize)
+    expect(merged.gutterSize).toBe(defaultTheme.gutterSize)
   })
 })

@@ -1,9 +1,8 @@
 import React, { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
+import { dayLabels } from '../constants'
 import type { HeatmapTheme } from '../types'
-
-const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
 interface DayLabelsProps {
   theme: HeatmapTheme
@@ -15,7 +14,7 @@ function DayLabelsComponent({ theme, showMonthLabels }: DayLabelsProps) {
   const paddingTop = useMemo(() => (showMonthLabels ? monthLabelHeight : 0), [showMonthLabels, monthLabelHeight])
   return (
     <View style={[styles.column, { width: dayLabelWidth, paddingTop }]}>
-      {DAY_LABELS.map((label, i) => (
+      {dayLabels.map((label, i) => (
         <View key={i} style={[styles.center, { height: cellSize, marginBottom: gutterSize }]}>
           {label ? <Text style={[styles.text, { color: dayLabelColor, lineHeight: cellSize }]}>{label}</Text> : null}
         </View>

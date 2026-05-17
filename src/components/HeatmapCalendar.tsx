@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
-import type { HeatmapCalendarProps, TooltipData } from '../types'
+import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildWeekGrid, getDefaultDateRange, getMonthLabels } from '../utils/dateUtils'
 import { DayLabels } from './DayLabels'
@@ -9,7 +9,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapCalendarProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   const { startDate, endDate } = useMemo(() => {

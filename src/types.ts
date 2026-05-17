@@ -33,7 +33,7 @@ export interface TooltipData {
 
 export type CellMode = 'solid' | 'gradient' | 'density'
 
-export interface HeatmapCalendarProps {
+export interface HeatmapProps {
   data: DataPoint[]
   startDate?: Date
   endDate?: Date

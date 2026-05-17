@@ -1,6 +1,4 @@
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-const FULL_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+import { fullMonthNames, monthNames } from '../constants'
 
 export function toDateString(date: Date): string {
   const y = date.getFullYear()
@@ -16,7 +14,7 @@ export function parseDate(dateStr: string): Date {
 
 export function formatDisplayDate(dateStr: string): string {
   const date = parseDate(dateStr)
-  return `${FULL_MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+  return `${fullMonthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 }
 
 /**
@@ -70,7 +68,7 @@ export function getMonthLabels(weeks: string[][]): MonthLabel[] {
     if (month !== lastMonth) {
       // Skip if fewer than 2 weeks since last label (avoids crowding)
       if (labels.length === 0 || i - labels[labels.length - 1].weekIndex >= 2) {
-        labels.push({ label: MONTH_NAMES[month], weekIndex: i })
+        labels.push({ label: monthNames[month], weekIndex: i })
         lastMonth = month
       }
     }
