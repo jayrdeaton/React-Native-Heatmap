@@ -38,7 +38,9 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const clipId = `clip-${date}`
   const hasData = value > 0
   const activeSegments = segments && segments.length > 0 ? segments : null
-  const segmentTotal = activeSegments ? activeSegments.reduce((acc, s) => acc + s.value, 0) : 0
+  const weightedSegments = activeSegments ? activeSegments.map((s) => ({ ...s, effectiveValue: s.value * (s.weight ?? 1) })) : null
+  const effectiveTotal = weightedSegments ? weightedSegments.reduce((acc, s) => acc + s.effectiveValue, 0) : 0
+  const dominantSegment = weightedSegments ? weightedSegments.reduce((prev, cur) => (cur.effectiveValue > prev.effectiveValue ? cur : prev)) : null
 
   return (
     <TouchableOpacity onPress={handlePress} disabled={!onPress} style={{ marginBottom: gutter }} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button'>
@@ -65,7 +67,7 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
         )}
 
         {cellMode === 'stacked' &&
-          (activeSegments && segmentTotal > 0 ? (
+          (weightedSegments && effectiveTotal > 0 ? (
             <>
               <Defs>
                 <ClipPath id={clipId}>
@@ -73,9 +75,9 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
                 </ClipPath>
               </Defs>
               <G clipPath={`url(#${clipId})`}>
-                {activeSegments.map((seg, i) => {
-                  const sliceHeight = (seg.value / segmentTotal) * size
-                  const y = activeSegments.slice(0, i).reduce((acc, s) => acc + (s.value / segmentTotal) * size, 0)
+                {weightedSegments.map((seg, i) => {
+                  const sliceHeight = (seg.effectiveValue / effectiveTotal) * size
+                  const y = weightedSegments.slice(0, i).reduce((acc, s) => acc + (s.effectiveValue / effectiveTotal) * size, 0)
                   return <Rect key={i} x={0} y={y} width={size} height={sliceHeight} fill={seg.color} />
                 })}
               </G>
@@ -85,15 +87,15 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
           ))}
 
         {cellMode === 'dots' &&
-          (activeSegments && segmentTotal > 0 ? (
+          (weightedSegments && effectiveTotal > 0 ? (
             <>
               <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={emptyColor} />
-              {getDotPositions(activeSegments.length, size).map((pos, i) => {
-                const seg = activeSegments[i]
-                const cols = Math.ceil(Math.sqrt(activeSegments.length))
-                const rows = Math.ceil(activeSegments.length / cols)
+              {getDotPositions(weightedSegments.length, size).map((pos, i) => {
+                const seg = weightedSegments[i]
+                const cols = Math.ceil(Math.sqrt(weightedSegments.length))
+                const rows = Math.ceil(weightedSegments.length / cols)
                 const maxR = Math.min(size / (2 * cols), size / (2 * rows)) * 0.8
-                const r = maxR * (seg.value / segmentTotal) + maxR * 0.2
+                const r = maxR * (seg.effectiveValue / effectiveTotal) + maxR * 0.2
                 return <Circle key={i} cx={pos.x} cy={pos.y} r={Math.min(r, maxR)} fill={seg.color} />
               })}
             </>
@@ -103,6 +105,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
               {hasData && <Circle cx={size / 2} cy={size / 2} r={(size / 2 - 1) * normalizedValue} fill={color} />}
             </>
           ))}
+
+        {cellMode === 'priority' && (dominantSegment ? <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={dominantSegment.color} /> : <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={color} />)}
       </Svg>
     </TouchableOpacity>
   )

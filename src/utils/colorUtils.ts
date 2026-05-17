@@ -36,14 +36,37 @@ export function computeDataRange(data: DataPoint[]): { min: number; max: number 
   return { min, max }
 }
 
+function parseHex(hex: string): [number, number, number] {
+  const c = hex.replace('#', '')
+  const full =
+    c.length === 3
+      ? c
+          .split('')
+          .map((x) => x + x)
+          .join('')
+      : c
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)]
+}
+
+function interpolateColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = parseHex(a)
+  const [r2, g2, b2] = parseHex(b)
+  const r = Math.round(r1 + (r2 - r1) * t)
+  const g = Math.round(g1 + (g2 - g1) * t)
+  const bl = Math.round(b1 + (b2 - b1) * t)
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`
+}
+
 export function getAutoScaleColor(value: number | undefined, min: number, max: number, scale: ColorScale): string {
   if (value === undefined || value === 0) return scale.emptyColor ?? scale.colors[0]
   const nonEmptyColors = scale.colors.slice(1)
   if (nonEmptyColors.length === 0) return scale.colors[0]
   if (min === max) return nonEmptyColors[nonEmptyColors.length - 1]
   const normalized = (value - min) / (max - min)
-  const idx = Math.min(Math.floor(normalized * nonEmptyColors.length), nonEmptyColors.length - 1)
-  return nonEmptyColors[idx]
+  const position = normalized * (nonEmptyColors.length - 1)
+  const lo = Math.floor(position)
+  const hi = Math.min(lo + 1, nonEmptyColors.length - 1)
+  return interpolateColor(nonEmptyColors[lo], nonEmptyColors[hi], position - lo)
 }
 
 export function getNormalizedValue(value: number | undefined, scale: ColorScale, dataMax?: number): number {

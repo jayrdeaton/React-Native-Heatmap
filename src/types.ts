@@ -3,6 +3,7 @@ import type React from 'react'
 export interface Segment {
   color: string
   value: number
+  weight?: number
 }
 
 export interface DataPoint {
@@ -38,7 +39,7 @@ export interface TooltipData {
   metadata?: Record<string, unknown>
 }
 
-export type CellMode = 'solid' | 'gradient' | 'density' | 'stacked' | 'dots'
+export type CellMode = 'solid' | 'gradient' | 'density' | 'stacked' | 'dots' | 'priority'
 
 export interface HeatmapProps {
   data: DataPoint[]
