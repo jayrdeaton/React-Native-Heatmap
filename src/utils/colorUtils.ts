@@ -1,14 +1,16 @@
-import { defaultColorScale, defaultTheme } from '../constants'
+import { defaultColorScale, defaultDarkColorScale, defaultDarkTheme, defaultTheme } from '../constants'
 import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
 
-export { defaultColorScale, defaultTheme }
+export { defaultColorScale, defaultDarkColorScale, defaultDarkTheme, defaultTheme }
 
-export function mergeColorScale(partial?: Partial<ColorScale>): ColorScale {
-  return { ...defaultColorScale, ...partial }
+export function mergeColorScale(partial?: Partial<ColorScale>, colorScheme?: 'light' | 'dark'): ColorScale {
+  const base = colorScheme === 'dark' ? defaultDarkColorScale : defaultColorScale
+  return { ...base, ...partial }
 }
 
-export function mergeTheme(partial?: Partial<HeatmapTheme>): HeatmapTheme {
-  return { ...defaultTheme, ...partial }
+export function mergeTheme(partial?: Partial<HeatmapTheme>, colorScheme?: 'light' | 'dark'): HeatmapTheme {
+  const base = colorScheme === 'dark' ? defaultDarkTheme : defaultTheme
+  return { ...base, ...partial }
 }
 
 export function getColorForValue(value: number | undefined, scale: ColorScale): string {

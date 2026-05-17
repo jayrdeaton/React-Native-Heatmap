@@ -106,7 +106,12 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
             </>
           ))}
 
-        {cellMode === 'priority' && (dominantSegment ? <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={dominantSegment.color} /> : <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={color} />)}
+        {cellMode === 'priority' && (
+          <>
+            <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={emptyColor} />
+            {hasData && <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={dominantSegment ? dominantSegment.color : color} fillOpacity={0.2 + normalizedValue * 0.8} />}
+          </>
+        )}
       </Svg>
     </TouchableOpacity>
   )

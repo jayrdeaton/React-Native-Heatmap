@@ -48,6 +48,7 @@ export interface HeatmapProps {
   colorScale?: Partial<ColorScale>
   theme?: Partial<HeatmapTheme>
   cellMode?: CellMode
+  colorScheme?: 'light' | 'dark'
   autoScale?: boolean
   showMonthLabels?: boolean
   showDayLabels?: boolean

@@ -8,8 +8,14 @@ export const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
 export const defaultColorScale: ColorScale = {
   thresholds: [1, 4, 8, 16],
-  colors: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
-  emptyColor: '#ebedf0'
+  colors: ['#d0d7de', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
+  emptyColor: '#d0d7de'
+}
+
+export const defaultDarkColorScale: ColorScale = {
+  thresholds: [1, 4, 8, 16],
+  colors: ['#21262d', '#0e4429', '#006d32', '#26a641', '#39d353'],
+  emptyColor: '#21262d'
 }
 
 export const defaultTheme: HeatmapTheme = {
@@ -23,4 +29,11 @@ export const defaultTheme: HeatmapTheme = {
   tooltipTextColor: '#ffffff',
   monthLabelHeight: 18,
   dayLabelWidth: 28
+}
+
+export const defaultDarkTheme: HeatmapTheme = {
+  ...defaultTheme,
+  monthLabelColor: '#8b949e',
+  dayLabelColor: '#8b949e',
+  tooltipBackgroundColor: '#30363d',
 }

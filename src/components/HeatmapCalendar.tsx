@@ -9,7 +9,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   const { startDate, endDate } = useMemo(() => {
@@ -20,8 +20,8 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     }
   }, [startDateProp, endDateProp])
 
-  const colorScale = useMemo(() => mergeColorScale(colorScaleProp), [colorScaleProp])
-  const theme = useMemo(() => mergeTheme(themeProp), [themeProp])
+  const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme), [colorScaleProp, colorScheme])
+  const theme = useMemo(() => mergeTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const dataMap = useMemo(() => buildDataMap(data), [data])
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
   const weeks = useMemo(() => buildWeekGrid(startDate, endDate), [startDate, endDate])
