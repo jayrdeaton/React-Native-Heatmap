@@ -1,46 +1,60 @@
 import React, { useMemo } from 'react'
 import Svg, { Circle } from 'react-native-svg'
-import { computeDataRange, getAutoScaleColor, getColorForValue, mergeColorScale } from '../utils/colorUtils'
 import { getDefaultDateRange, parseDate } from '../utils/dateUtils'
 import type { ScatterProps } from '../types'
+
+const MAX_DOTS = 50
+
+function rand(n: number): number {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
 
 export function HeatmapScatter({
   data,
   startDate,
   endDate,
-  color,
-  colorScale,
-  colorScheme = 'light',
-  autoScale = false,
   width = 300,
   height = 150,
-  dotRadius = 3,
+  dotRadius = 2,
 }: ScatterProps) {
   const effectiveStart = useMemo(() => startDate ?? getDefaultDateRange().startDate, [startDate])
   const effectiveEnd = useMemo(() => endDate ?? getDefaultDateRange().endDate, [endDate])
-
-  const scale = useMemo(() => mergeColorScale(colorScale, colorScheme, color), [colorScale, colorScheme, color])
-  const dataRange = useMemo(() => computeDataRange(data), [data])
 
   const dots = useMemo(() => {
     const padding = dotRadius + 2
     const startTime = effectiveStart.getTime()
     const endTime = effectiveEnd.getTime()
     const timeSpan = endTime - startTime
-    const valueSpan = dataRange.max - dataRange.min
     const plotW = width - padding * 2
     const plotH = height - padding * 2
+    const xJitter = dotRadius * 4
 
-    return data.flatMap((p) => {
-      if (p.value <= 0) return []
-      const t = parseDate(p.date).getTime()
-      if (t < startTime || t > endTime) return []
-      const cx = padding + (timeSpan === 0 ? plotW / 2 : ((t - startTime) / timeSpan) * plotW)
-      const cy = padding + (valueSpan === 0 ? plotH / 2 : (1 - (p.value - dataRange.min) / valueSpan) * plotH)
-      const fill = p.color ?? (autoScale ? getAutoScaleColor(p.value, dataRange.min, dataRange.max, scale) : getColorForValue(p.value, scale))
-      return [{ key: p.date, cx, cy, fill }]
-    })
-  }, [data, effectiveStart, effectiveEnd, dataRange, scale, autoScale, width, height, dotRadius])
+    const result: { key: string; cx: number; cy: number; fill: string }[] = []
+
+    for (const point of data) {
+      if (!point.segments?.length) continue
+      const t = parseDate(point.date).getTime()
+      if (t < startTime || t > endTime) continue
+
+      const baseX = padding + (timeSpan === 0 ? plotW / 2 : ((t - startTime) / timeSpan) * plotW)
+      const dayOrdinal = Math.round((t - startTime) / 86400000)
+
+      for (let si = 0; si < point.segments.length; si++) {
+        const seg = point.segments[si]
+        const count = Math.min(seg.value, MAX_DOTS)
+
+        for (let di = 0; di < count; di++) {
+          const seed = dayOrdinal * 10000 + si * 1000 + di
+          const cx = Math.max(padding, Math.min(width - padding, baseX + (rand(seed * 1.7) - 0.5) * xJitter))
+          const cy = padding + rand(seed * 2.3) * plotH
+          result.push({ key: `${point.date}-${si}-${di}`, cx, cy, fill: seg.color })
+        }
+      }
+    }
+
+    return result
+  }, [data, effectiveStart, effectiveEnd, width, height, dotRadius])
 
   return (
     <Svg width={width} height={height}>
