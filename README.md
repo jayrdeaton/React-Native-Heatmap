@@ -54,6 +54,7 @@ export default function App() {
 | `showDayLabels` | `boolean` | `true` | Show Mon / Wed / Fri labels on the left. |
 | `animated` | `boolean` | `false` | Enable all animations (load ripple, today pulse, press spring). |
 | `scrollToToday` | `boolean` | `true` | Scroll to the current week on mount. |
+| `scrollEnabled` | `boolean` | `true` | Enable or disable horizontal scrolling. |
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | — | Called when a cell is tapped. |
 | `onEndReached` | `() => void` | — | Called when the user scrolls near the right edge. Use for infinite scroll. |
 | `onEndReachedThreshold` | `number` | `0.1` | Fraction of total width from the right edge that triggers `onEndReached`. |

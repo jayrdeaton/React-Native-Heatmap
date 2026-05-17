@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
+import { InteractionManager, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
@@ -9,10 +9,16 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollToToday = true, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+  const [ready, setReady] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const hasScrolledToToday = useRef(false)
+
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => setReady(true))
+    return () => handle.cancel()
+  }, [])
 
   const { startDate, endDate } = useMemo(() => {
     const defaults = getDefaultDateRange()
@@ -81,11 +87,11 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
         {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
         <View style={styles.container}>
-          <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onLayout={handleScrollViewLayout} onScroll={handleScroll}>
+          <ScrollView ref={scrollViewRef} horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onLayout={handleScrollViewLayout} onScroll={handleScroll}>
             <View style={{ height: gridHeight }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
               <View style={styles.row}>
-                {weeks.map((week, i) => (
+                {ready && weeks.map((week, i) => (
                   <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />
                 ))}
               </View>

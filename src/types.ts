@@ -75,4 +75,5 @@ export interface HeatmapProps {
   onEndReachedThreshold?: number
   tooltipLabel?: string
   tooltipEmptyLabel?: string
+  scrollEnabled?: boolean
 }
