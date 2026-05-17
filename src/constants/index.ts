@@ -6,17 +6,8 @@ export const fullMonthNames = ['January', 'February', 'March', 'April', 'May', '
 
 export const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
-export const defaultColorScale: ColorScale = {
-  thresholds: [1, 4, 8, 16],
-  colors: ['#d0d7de', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
-  emptyColor: '#d0d7de'
-}
-
-export const defaultDarkColorScale: ColorScale = {
-  thresholds: [1, 4, 8, 16],
-  colors: ['#21262d', '#0e4429', '#006d32', '#26a641', '#39d353'],
-  emptyColor: '#21262d'
-}
+export const defaultLightColor = '#4183c4'
+export const defaultDarkColor = '#58a6ff'
 
 export const defaultTheme: HeatmapTheme = {
   cellSize: 14,
@@ -35,5 +26,5 @@ export const defaultDarkTheme: HeatmapTheme = {
   ...defaultTheme,
   monthLabelColor: '#8b949e',
   dayLabelColor: '#8b949e',
-  tooltipBackgroundColor: '#30363d',
+  tooltipBackgroundColor: '#30363d'
 }

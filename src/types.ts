@@ -45,6 +45,7 @@ export interface HeatmapProps {
   data: DataPoint[]
   startDate?: Date
   endDate?: Date
+  color?: string
   colorScale?: Partial<ColorScale>
   theme?: Partial<HeatmapTheme>
   cellMode?: CellMode

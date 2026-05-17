@@ -39,8 +39,9 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoS
         const point = dataMap.get(date)
         const value = point?.value ?? 0
         const segments = point?.segments
-        const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(value, dataRange.min, dataRange.max, colorScale) : getColorForValue(value, colorScale))
-        const normalizedValue = getNormalizedValue(value, colorScale, dataRange?.max)
+        const effectiveValue = segments && segments.length > 0 ? segments.reduce((acc, s) => acc + s.value * (s.weight ?? 1), 0) : value
+        const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(effectiveValue, dataRange.min, dataRange.max, colorScale) : getColorForValue(effectiveValue, colorScale))
+        const normalizedValue = getNormalizedValue(effectiveValue, colorScale, dataRange?.max)
 
         return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} />
       })}

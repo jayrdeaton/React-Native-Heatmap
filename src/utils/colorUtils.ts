@@ -1,12 +1,22 @@
-import { defaultColorScale, defaultDarkColorScale, defaultDarkTheme, defaultTheme } from '../constants'
+import { defaultDarkColor, defaultDarkTheme, defaultLightColor, defaultTheme } from '../constants'
 import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
 
-export { defaultColorScale, defaultDarkColorScale, defaultDarkTheme, defaultTheme }
+export { defaultDarkTheme, defaultTheme }
 
-export function mergeColorScale(partial?: Partial<ColorScale>, colorScheme?: 'light' | 'dark'): ColorScale {
-  const base = colorScheme === 'dark' ? defaultDarkColorScale : defaultColorScale
+export function generateColorScale(baseColor: string, colorScheme: 'light' | 'dark' = 'light'): ColorScale {
+  const anchor = colorScheme === 'dark' ? '#0d1117' : '#ffffff'
+  const emptyColor = interpolateColor(anchor, baseColor, 0.07)
+  const colors = [emptyColor, interpolateColor(anchor, baseColor, 0.25), interpolateColor(anchor, baseColor, 0.5), interpolateColor(anchor, baseColor, 0.75), baseColor]
+  return { thresholds: [1, 4, 8, 16], colors, emptyColor }
+}
+
+export function mergeColorScale(partial?: Partial<ColorScale>, colorScheme?: 'light' | 'dark', color?: string): ColorScale {
+  const baseColor = color ?? (colorScheme === 'dark' ? defaultDarkColor : defaultLightColor)
+  const base = generateColorScale(baseColor, colorScheme ?? 'light')
   return { ...base, ...partial }
 }
+
+export const defaultColorScale = generateColorScale(defaultLightColor, 'light')
 
 export function mergeTheme(partial?: Partial<HeatmapTheme>, colorScheme?: 'light' | 'dark'): HeatmapTheme {
   const base = colorScheme === 'dark' ? defaultDarkTheme : defaultTheme
