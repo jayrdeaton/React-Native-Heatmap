@@ -43,6 +43,19 @@ export interface TooltipData {
 
 export type CellMode = 'solid' | 'gradient' | 'density' | 'stacked' | 'dots' | 'priority'
 
+export interface ScatterProps {
+  data: DataPoint[]
+  startDate?: Date
+  endDate?: Date
+  color?: string
+  colorScale?: Partial<ColorScale>
+  colorScheme?: 'light' | 'dark'
+  autoScale?: boolean
+  width?: number
+  height?: number
+  dotRadius?: number
+}
+
 export interface HeatmapProps {
   data: DataPoint[]
   startDate?: Date
