@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
+import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
@@ -28,20 +28,6 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
   const weeks = useMemo(() => buildWeekGrid(startDate, endDate), [startDate, endDate])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
-
-  // One Animated.Value per week column, staggered for the load ripple
-  const loadAnimValues = useMemo(() => weeks.map(() => new Animated.Value(animated ? 0 : 1)), [weeks.length, animated])
-
-  useEffect(() => {
-    if (!animated) return
-    loadAnimValues.forEach((val) => val.setValue(0))
-
-    const animations = loadAnimValues.map((val, i) => {
-      const delay = animationDirection === 'rtl' ? (weeks.length - 1 - i) * 30 : i * 30
-      return Animated.timing(val, { toValue: 1, duration: animationDuration, delay, useNativeDriver: true })
-    })
-    Animated.parallel(animations).start()
-  }, [animated, weeks.length])
 
   // Scroll to today on mount (once per startDate/endDate change)
   useEffect(() => {
@@ -100,7 +86,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
               <View style={styles.row}>
                 {weeks.map((week, i) => (
-                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} loadAnimValue={loadAnimValues[i]} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />
+                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />
                 ))}
               </View>
             </View>

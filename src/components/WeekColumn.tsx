@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { Animated, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import type { CellMode, ColorScale, DataPoint, HeatmapTheme } from '../types'
 import { getAutoScaleColor, getColorForValue, getNormalizedValue } from '../utils/colorUtils'
@@ -16,7 +16,6 @@ interface WeekColumnProps {
   dataRange?: { min: number; max: number }
   onCellPress?: (date: string, value: number) => void
   animated?: boolean
-  loadAnimValue?: Animated.Value
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   columnIndex: number
   totalColumns: number
@@ -26,10 +25,11 @@ interface WeekColumnProps {
 
 const todayString = getTodayString()
 
-function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, loadAnimValue, renderCell, columnIndex, totalColumns, animationDirection, animationDuration }: WeekColumnProps) {
+function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize, todayBorderColor } = theme
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
-  const dataFadeDelay = animationDirection === 'rtl' ? (totalColumns - 1 - columnIndex) * 30 : columnIndex * 30
+  const step = animationDuration * 0.1
+  const dataFadeDelay = animationDirection === 'rtl' ? (totalColumns - 1 - columnIndex) * step : columnIndex * step
 
   return (
     <View style={[styles.column, { marginRight: gutterSize }]}>
@@ -45,7 +45,7 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoS
         const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(effectiveValue, dataRange.min, dataRange.max, colorScale) : getColorForValue(effectiveValue, colorScale))
         const normalizedValue = getNormalizedValue(effectiveValue, colorScale, dataRange?.max)
 
-        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} animated={animated} loadAnimValue={loadAnimValue} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} />
+        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} animated={animated} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} />
       })}
     </View>
   )

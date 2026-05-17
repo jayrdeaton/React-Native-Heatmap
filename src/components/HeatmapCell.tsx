@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef } from 'react'
-import { Animated, Easing, Pressable, type ViewStyle } from 'react-native'
+import { Animated, Easing, Pressable } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 import type { CellMode, DataPoint, Segment } from '../types'
@@ -18,7 +18,6 @@ interface HeatmapCellProps {
   onPress?: (date: string, value: number) => void
   isToday?: boolean
   animated?: boolean
-  loadAnimValue?: Animated.Value
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   dataPoint?: DataPoint | null
   todayBorderColor: string
@@ -37,7 +36,7 @@ function getDotPositions(n: number, size: number): { x: number; y: number }[] {
   }))
 }
 
-function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, animated: isAnimated = false, loadAnimValue, renderCell, dataPoint, todayBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
+function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
   const pressScale = useRef(new Animated.Value(1)).current
   const pulseScale = useRef(new Animated.Value(1)).current
   const dataFadeAnim = useRef(new Animated.Value(1)).current
@@ -82,9 +81,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
 
   const transform: Array<{ scale: Animated.Value | Animated.AnimatedInterpolation<number> }> = [{ scale: pressScale }]
   if (isToday && isAnimated) transform.push({ scale: pulseScale })
-  if (isAnimated && loadAnimValue) transform.push({ scale: loadAnimValue.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) })
 
-  const animStyle = { opacity: isAnimated && loadAnimValue ? loadAnimValue : 1, transform }
+  const animStyle = { transform }
   const dataFadeStyle = { opacity: isAnimated ? dataFadeAnim : 1 }
 
   const gradientId = `grad-${date}`
@@ -100,8 +98,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
 
   return (
     <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button'>
-      <Animated.View style={[{ marginBottom: gutter }, animStyle as unknown as ViewStyle]}>
-        <Animated.View style={dataFadeStyle as unknown as ViewStyle}>
+      <Animated.View style={[{ marginBottom: gutter }, animStyle]}>
+        <Animated.View style={dataFadeStyle as unknown as { opacity: number }}>
           {renderCell ? (
             renderCell(dataPoint ?? null, date)
           ) : (
