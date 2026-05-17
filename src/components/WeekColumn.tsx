@@ -2,7 +2,7 @@ import React, { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import type { CellMode, ColorScale, DataPoint, HeatmapTheme } from '../types'
-import { getColorForValue, getNormalizedValue } from '../utils/colorUtils'
+import { getAutoScaleColor, getColorForValue, getNormalizedValue } from '../utils/colorUtils'
 import { HeatmapCell } from './HeatmapCell'
 
 interface WeekColumnProps {
@@ -11,10 +11,12 @@ interface WeekColumnProps {
   colorScale: ColorScale
   theme: HeatmapTheme
   cellMode: CellMode
+  autoScale?: boolean
+  dataRange?: { min: number; max: number }
   onCellPress?: (date: string, value: number) => void
 }
 
-function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, onCellPress }: WeekColumnProps) {
+function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize } = theme
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
 
@@ -36,10 +38,11 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, onCel
 
         const point = dataMap.get(date)
         const value = point?.value ?? 0
-        const color = getColorForValue(value, colorScale)
-        const normalizedValue = getNormalizedValue(value, colorScale)
+        const segments = point?.segments
+        const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(value, dataRange.min, dataRange.max, colorScale) : getColorForValue(value, colorScale))
+        const normalizedValue = getNormalizedValue(value, colorScale, dataRange?.max)
 
-        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} onPress={onCellPress} />
+        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} />
       })}
     </View>
   )

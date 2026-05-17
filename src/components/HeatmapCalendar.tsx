@@ -2,14 +2,14 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
-import { buildDataMap, mergeColorScale, mergeTheme } from '../utils/colorUtils'
+import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildWeekGrid, getDefaultDateRange, getMonthLabels } from '../utils/dateUtils'
 import { DayLabels } from './DayLabels'
 import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   const { startDate, endDate } = useMemo(() => {
@@ -23,6 +23,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp), [colorScaleProp])
   const theme = useMemo(() => mergeTheme(themeProp), [themeProp])
   const dataMap = useMemo(() => buildDataMap(data), [data])
+  const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
   const weeks = useMemo(() => buildWeekGrid(startDate, endDate), [startDate, endDate])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
 
@@ -64,7 +65,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
               <View style={styles.row}>
                 {weeks.map((week, i) => (
-                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} onCellPress={handleCellPress} />
+                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} />
                 ))}
               </View>
             </View>

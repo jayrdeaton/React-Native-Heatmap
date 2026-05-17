@@ -1,8 +1,15 @@
 import type React from 'react'
 
+export interface Segment {
+  color: string
+  value: number
+}
+
 export interface DataPoint {
   date: string
   value: number
+  color?: string
+  segments?: Segment[]
   metadata?: Record<string, unknown>
 }
 
@@ -31,7 +38,7 @@ export interface TooltipData {
   metadata?: Record<string, unknown>
 }
 
-export type CellMode = 'solid' | 'gradient' | 'density'
+export type CellMode = 'solid' | 'gradient' | 'density' | 'stacked' | 'dots'
 
 export interface HeatmapProps {
   data: DataPoint[]
@@ -40,6 +47,7 @@ export interface HeatmapProps {
   colorScale?: Partial<ColorScale>
   theme?: Partial<HeatmapTheme>
   cellMode?: CellMode
+  autoScale?: boolean
   showMonthLabels?: boolean
   showDayLabels?: boolean
   onDayPress?: (day: DataPoint | null, date: string) => void

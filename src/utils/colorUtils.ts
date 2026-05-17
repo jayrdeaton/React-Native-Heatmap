@@ -1,5 +1,5 @@
-import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
 import { defaultColorScale, defaultTheme } from '../constants'
+import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
 
 export { defaultColorScale, defaultTheme }
 
@@ -23,13 +23,32 @@ export function getColorForValue(value: number | undefined, scale: ColorScale): 
   return scale.colors[0]
 }
 
-/**
- * Returns a 0-1 normalized intensity for the density cell mode.
- * 0 = no data, 1 = at or above the highest threshold.
- */
-export function getNormalizedValue(value: number | undefined, scale: ColorScale): number {
+export function computeDataRange(data: DataPoint[]): { min: number; max: number } {
+  let min = Infinity
+  let max = -Infinity
+  for (const point of data) {
+    if (point.value > 0) {
+      if (point.value < min) min = point.value
+      if (point.value > max) max = point.value
+    }
+  }
+  if (min === Infinity) return { min: 0, max: 0 }
+  return { min, max }
+}
+
+export function getAutoScaleColor(value: number | undefined, min: number, max: number, scale: ColorScale): string {
+  if (value === undefined || value === 0) return scale.emptyColor ?? scale.colors[0]
+  const nonEmptyColors = scale.colors.slice(1)
+  if (nonEmptyColors.length === 0) return scale.colors[0]
+  if (min === max) return nonEmptyColors[nonEmptyColors.length - 1]
+  const normalized = (value - min) / (max - min)
+  const idx = Math.min(Math.floor(normalized * nonEmptyColors.length), nonEmptyColors.length - 1)
+  return nonEmptyColors[idx]
+}
+
+export function getNormalizedValue(value: number | undefined, scale: ColorScale, dataMax?: number): number {
   if (value === undefined || value === 0) return 0
-  const max = scale.thresholds[scale.thresholds.length - 1]
+  const max = dataMax ?? scale.thresholds[scale.thresholds.length - 1]
   return Math.min(value / max, 1)
 }
 

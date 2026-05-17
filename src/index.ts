@@ -1,7 +1,7 @@
 import { HeatmapCalendar } from './components/HeatmapCalendar'
 
 const Heatmap = {
-  Calendar: HeatmapCalendar,
+  Calendar: HeatmapCalendar
 }
 
 export default Heatmap
