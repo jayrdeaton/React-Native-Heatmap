@@ -4,6 +4,7 @@
   "description": "A GitHub-style activity heatmap for React Native with SVG rendering and customizable cell modes",
   "license": "MIT",
   "author": "Jay Deaton",
+  "access": "public",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
