@@ -104,4 +104,57 @@ describe('Heatmap.Calendar', () => {
       create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} renderTooltip={renderTooltip} />)
     }).not.toThrow()
   })
+
+  it('renders with cellMode stacked', () => {
+    const dataWithSegments: DataPoint[] = [{ date: '2026-05-17', value: 10, segments: [{ color: '#40c463', value: 6 }, { color: '#216e39', value: 4 }] }]
+    expect(() => {
+      create(<Heatmap.Calendar data={dataWithSegments} startDate={FIXED_START} endDate={FIXED_END} cellMode='stacked' />)
+    }).not.toThrow()
+  })
+
+  it('renders with cellMode dots', () => {
+    const dataWithSegments: DataPoint[] = [{ date: '2026-05-17', value: 10, segments: [{ color: '#40c463', value: 6 }, { color: '#216e39', value: 4 }] }]
+    expect(() => {
+      create(<Heatmap.Calendar data={dataWithSegments} startDate={FIXED_START} endDate={FIXED_END} cellMode='dots' />)
+    }).not.toThrow()
+  })
+
+  it('renders with cellMode priority', () => {
+    const dataWithSegments: DataPoint[] = [{ date: '2026-05-17', value: 10, segments: [{ color: '#40c463', value: 6 }, { color: '#216e39', value: 4 }] }]
+    expect(() => {
+      create(<Heatmap.Calendar data={dataWithSegments} startDate={FIXED_START} endDate={FIXED_END} cellMode='priority' />)
+    }).not.toThrow()
+  })
+
+  it('accepts tooltipLabel and tooltipEmptyLabel props', () => {
+    expect(() => {
+      create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} tooltipLabel='workout' tooltipEmptyLabel='Rest day' />)
+    }).not.toThrow()
+  })
+
+  it('accepts renderCell prop', () => {
+    const renderCell = jest.fn(() => null)
+    expect(() => {
+      create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} />)
+    }).not.toThrow()
+  })
+
+  it('accepts scrollToToday={false}', () => {
+    expect(() => {
+      create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} scrollToToday={false} />)
+    }).not.toThrow()
+  })
+
+  it('accepts onEndReached prop', () => {
+    const onEndReached = jest.fn()
+    expect(() => {
+      create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onEndReached={onEndReached} />)
+    }).not.toThrow()
+  })
+
+  it('accepts todayColor and todayBorderColor via theme', () => {
+    expect(() => {
+      create(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayColor: 'red', todayBorderColor: 'blue' }} />)
+    }).not.toThrow()
+  })
 })

@@ -1,4 +1,4 @@
-import { buildWeekGrid, formatDisplayDate, getDefaultDateRange, getMonthLabels, toDateString } from '../../utils/dateUtils'
+import { buildWeekGrid, formatDisplayDate, getDefaultDateRange, getMonthLabels, getTodayString, toDateString } from '../../utils/dateUtils'
 
 describe('toDateString', () => {
   it('formats a date to YYYY-MM-DD', () => {
@@ -107,6 +107,14 @@ describe('getMonthLabels', () => {
     for (let i = 1; i < labels.length; i++) {
       expect(labels[i].weekIndex).toBeGreaterThan(labels[i - 1].weekIndex)
     }
+  })
+})
+
+describe('getTodayString', () => {
+  it('returns today in YYYY-MM-DD format', () => {
+    const result = getTodayString()
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(result).toBe(toDateString(new Date()))
   })
 })
 
