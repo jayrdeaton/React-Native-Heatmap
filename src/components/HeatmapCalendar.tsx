@@ -9,7 +9,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const hasScrolledToToday = useRef(false)
@@ -38,7 +38,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
 
     const animations = loadAnimValues.map((val, i) => {
       const delay = animationDirection === 'rtl' ? (weeks.length - 1 - i) * 30 : i * 30
-      return Animated.timing(val, { toValue: 1, duration: 350, delay, useNativeDriver: true })
+      return Animated.timing(val, { toValue: 1, duration: animationDuration, delay, useNativeDriver: true })
     })
     Animated.parallel(animations).start()
   }, [animated, weeks.length])
@@ -100,7 +100,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
               <View style={styles.row}>
                 {weeks.map((week, i) => (
-                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} loadAnimValue={loadAnimValues[i]} renderCell={renderCell} />
+                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} loadAnimValue={loadAnimValues[i]} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />
                 ))}
               </View>
             </View>

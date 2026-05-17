@@ -60,6 +60,7 @@ export interface HeatmapProps {
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean
   animationDirection?: 'ltr' | 'rtl'
+  animationDuration?: number
   scrollToToday?: boolean
   onEndReached?: () => void
   onEndReachedThreshold?: number

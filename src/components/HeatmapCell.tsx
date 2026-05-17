@@ -22,6 +22,8 @@ interface HeatmapCellProps {
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   dataPoint?: DataPoint | null
   todayBorderColor: string
+  dataFadeDelay?: number
+  animationDuration?: number
 }
 
 function getDotPositions(n: number, size: number): { x: number; y: number }[] {
@@ -35,7 +37,7 @@ function getDotPositions(n: number, size: number): { x: number; y: number }[] {
   }))
 }
 
-function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, animated: isAnimated = false, loadAnimValue, renderCell, dataPoint, todayBorderColor }: HeatmapCellProps) {
+function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, animated: isAnimated = false, loadAnimValue, renderCell, dataPoint, todayBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
   const pressScale = useRef(new Animated.Value(1)).current
   const pulseScale = useRef(new Animated.Value(1)).current
   const dataFadeAnim = useRef(new Animated.Value(1)).current
@@ -47,16 +49,16 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
     prevValueRef.current = value
     if (prev === 0 && value > 0) {
       dataFadeAnim.setValue(0)
-      Animated.timing(dataFadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start()
+      Animated.timing(dataFadeAnim, { toValue: 1, duration: animationDuration, delay: dataFadeDelay, useNativeDriver: true }).start()
     }
-  }, [value, isAnimated, dataFadeAnim])
+  }, [value, isAnimated, dataFadeAnim, animationDuration, dataFadeDelay])
 
   useEffect(() => {
     if (!isToday || !isAnimated) {
       pulseScale.setValue(1)
       return
     }
-    const pulse = Animated.loop(Animated.sequence([Animated.timing(pulseScale, { toValue: 1.2, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }), Animated.timing(pulseScale, { toValue: 1, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.sin) })]))
+    const pulse = Animated.loop(Animated.sequence([Animated.timing(pulseScale, { toValue: 1.2, duration: animationDuration * 2.5, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }), Animated.timing(pulseScale, { toValue: 1, duration: animationDuration * 2.5, useNativeDriver: true, easing: Easing.inOut(Easing.sin) })]))
     pulse.start()
     return () => {
       pulse.stop()

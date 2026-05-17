@@ -18,13 +18,18 @@ interface WeekColumnProps {
   animated?: boolean
   loadAnimValue?: Animated.Value
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
+  columnIndex: number
+  totalColumns: number
+  animationDirection: 'ltr' | 'rtl'
+  animationDuration: number
 }
 
 const todayString = getTodayString()
 
-function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, loadAnimValue, renderCell }: WeekColumnProps) {
+function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, loadAnimValue, renderCell, columnIndex, totalColumns, animationDirection, animationDuration }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize, todayBorderColor } = theme
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
+  const dataFadeDelay = animationDirection === 'rtl' ? (totalColumns - 1 - columnIndex) * 30 : columnIndex * 30
 
   return (
     <View style={[styles.column, { marginRight: gutterSize }]}>
@@ -40,7 +45,7 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoS
         const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(effectiveValue, dataRange.min, dataRange.max, colorScale) : getColorForValue(effectiveValue, colorScale))
         const normalizedValue = getNormalizedValue(effectiveValue, colorScale, dataRange?.max)
 
-        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} animated={animated} loadAnimValue={loadAnimValue} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} />
+        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} animated={animated} loadAnimValue={loadAnimValue} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} />
       })}
     </View>
   )
