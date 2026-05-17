@@ -9,7 +9,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const hasScrolledToToday = useRef(false)
@@ -36,14 +36,9 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     if (!animated) return
     loadAnimValues.forEach((val) => val.setValue(0))
 
-    // Find the today column index so the ripple radiates outward from it
-    const todayStr = getTodayString()
-    const todayColIndex = weeks.findIndex((week) => week.includes(todayStr))
-    const origin = todayColIndex >= 0 ? todayColIndex : weeks.length - 1
-
     const animations = loadAnimValues.map((val, i) => {
-      const distance = Math.abs(i - origin)
-      return Animated.timing(val, { toValue: 1, duration: 350, delay: distance * 30, useNativeDriver: true })
+      const delay = animationDirection === 'rtl' ? (weeks.length - 1 - i) * 30 : i * 30
+      return Animated.timing(val, { toValue: 1, duration: 350, delay, useNativeDriver: true })
     })
     Animated.parallel(animations).start()
   }, [animated, weeks.length])

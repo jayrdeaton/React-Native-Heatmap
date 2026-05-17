@@ -59,6 +59,7 @@ export interface HeatmapProps {
   renderTooltip?: (data: TooltipData) => React.ReactNode
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean
+  animationDirection?: 'ltr' | 'rtl'
   scrollToToday?: boolean
   onEndReached?: () => void
   onEndReachedThreshold?: number
