@@ -77,6 +77,10 @@ export function getMonthLabels(weeks: string[][]): MonthLabel[] {
   return labels
 }
 
+export function getTodayString(): string {
+  return toDateString(new Date())
+}
+
 export function getDefaultDateRange(): { startDate: Date; endDate: Date } {
   const endDate = new Date()
   const startDate = new Date()

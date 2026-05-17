@@ -19,12 +19,16 @@ export const defaultTheme: HeatmapTheme = {
   tooltipBackgroundColor: '#1b1f23',
   tooltipTextColor: '#ffffff',
   monthLabelHeight: 18,
-  dayLabelWidth: 28
+  dayLabelWidth: 28,
+  todayColor: '#4183c4',
+  todayBorderColor: '#4183c4'
 }
 
 export const defaultDarkTheme: HeatmapTheme = {
   ...defaultTheme,
   monthLabelColor: '#8b949e',
   dayLabelColor: '#8b949e',
-  tooltipBackgroundColor: '#30363d'
+  tooltipBackgroundColor: '#30363d',
+  todayColor: '#58a6ff',
+  todayBorderColor: '#58a6ff'
 }

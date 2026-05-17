@@ -9,9 +9,11 @@ interface TooltipProps {
   data: TooltipData | null
   theme: HeatmapTheme
   renderTooltip?: (data: TooltipData) => React.ReactNode
+  tooltipLabel?: string
+  tooltipEmptyLabel?: string
 }
 
-function TooltipComponent({ visible, data, theme, renderTooltip }: TooltipProps) {
+function TooltipComponent({ visible, data, theme, renderTooltip, tooltipLabel = 'event', tooltipEmptyLabel = 'No events' }: TooltipProps) {
   if (!visible || !data) return null
 
   const { tooltipBackgroundColor, tooltipTextColor } = theme
@@ -20,11 +22,12 @@ function TooltipComponent({ visible, data, theme, renderTooltip }: TooltipProps)
     return <>{renderTooltip(data)}</>
   }
 
-  const countLabel = data.value === 1 ? '1 event' : `${data.value} events`
+  const unit = data.value === 1 ? tooltipLabel : `${tooltipLabel}s`
+  const countLabel = data.value === 0 ? tooltipEmptyLabel : `${data.value} ${unit}`
 
   return (
     <View style={[styles.container, { backgroundColor: tooltipBackgroundColor }]}>
-      <Text style={[styles.count, { color: tooltipTextColor }]}>{data.value === 0 ? 'No events' : countLabel}</Text>
+      <Text style={[styles.count, { color: tooltipTextColor }]}>{countLabel}</Text>
       <Text style={[styles.date, { color: tooltipTextColor }]}>{formatDisplayDate(data.date)}</Text>
     </View>
   )

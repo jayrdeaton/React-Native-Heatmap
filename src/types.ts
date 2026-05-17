@@ -31,6 +31,8 @@ export interface HeatmapTheme {
   tooltipTextColor: string
   monthLabelHeight: number
   dayLabelWidth: number
+  todayColor: string
+  todayBorderColor: string
 }
 
 export interface TooltipData {
@@ -55,5 +57,11 @@ export interface HeatmapProps {
   showDayLabels?: boolean
   onDayPress?: (day: DataPoint | null, date: string) => void
   renderTooltip?: (data: TooltipData) => React.ReactNode
+  renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean
+  scrollToToday?: boolean
+  onEndReached?: () => void
+  onEndReachedThreshold?: number
+  tooltipLabel?: string
+  tooltipEmptyLabel?: string
 }

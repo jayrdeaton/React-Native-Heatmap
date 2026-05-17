@@ -1,16 +1,18 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
-import { buildWeekGrid, getDefaultDateRange, getMonthLabels } from '../utils/dateUtils'
+import { buildWeekGrid, getDefaultDateRange, getMonthLabels, getTodayString } from '../utils/dateUtils'
 import { DayLabels } from './DayLabels'
 import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, scrollToToday = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const scrollViewRef = useRef<ScrollView>(null)
+  const hasScrolledToToday = useRef(false)
 
   const { startDate, endDate } = useMemo(() => {
     const defaults = getDefaultDateRange()
@@ -27,14 +29,59 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   const weeks = useMemo(() => buildWeekGrid(startDate, endDate), [startDate, endDate])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
 
+  // One Animated.Value per week column, staggered for the load ripple
+  const loadAnimValues = useMemo(() => weeks.map(() => new Animated.Value(animated ? 0 : 1)), [weeks.length, animated])
+
+  useEffect(() => {
+    if (!animated) return
+    loadAnimValues.forEach((val) => val.setValue(0))
+
+    // Find the today column index so the ripple radiates outward from it
+    const todayStr = getTodayString()
+    const todayColIndex = weeks.findIndex((week) => week.includes(todayStr))
+    const origin = todayColIndex >= 0 ? todayColIndex : weeks.length - 1
+
+    const animations = loadAnimValues.map((val, i) => {
+      const distance = Math.abs(i - origin)
+      return Animated.timing(val, { toValue: 1, duration: 350, delay: distance * 30, useNativeDriver: true })
+    })
+    Animated.parallel(animations).start()
+  }, [animated, weeks.length])
+
+  // Scroll to today on mount (once per startDate/endDate change)
+  useEffect(() => {
+    if (!scrollToToday || !scrollViewRef.current) return
+    hasScrolledToToday.current = false
+  }, [startDate, endDate, scrollToToday])
+
+  const handleScrollViewLayout = useCallback(() => {
+    if (!scrollToToday || hasScrolledToToday.current || !scrollViewRef.current) return
+    hasScrolledToToday.current = true
+
+    const todayStr = getTodayString()
+    const todayColIndex = weeks.findIndex((week) => week.includes(todayStr))
+    if (todayColIndex < 0) return
+
+    const colWidth = theme.cellSize + theme.gutterSize
+    const x = todayColIndex * colWidth
+    scrollViewRef.current.scrollTo({ x: Math.max(0, x - colWidth * 3), animated: false })
+  }, [scrollToToday, weeks, theme.cellSize, theme.gutterSize])
+
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { x: number }; contentSize: { width: number }; layoutMeasurement: { width: number } } }) => {
+      if (!onEndReached) return
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+      const distanceFromEnd = contentSize.width - layoutMeasurement.width - contentOffset.x
+      const threshold = contentSize.width * onEndReachedThreshold
+      if (distanceFromEnd <= threshold) onEndReached()
+    },
+    [onEndReached, onEndReachedThreshold]
+  )
+
   const handleCellPress = useCallback(
     (date: string, value: number) => {
       const point = dataMap.get(date) ?? null
-      const tooltipData: TooltipData = {
-        date,
-        value,
-        metadata: point?.metadata
-      }
+      const tooltipData: TooltipData = { date, value, metadata: point?.metadata }
       setTooltip((prev) => (prev?.date === date ? null : tooltipData))
       onDayPress?.(point, date)
     },
@@ -49,29 +96,22 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
 
   return (
     <TouchableWithoutFeedback onPress={dismissTooltip}>
-      <View
-        style={[
-          styles.row,
-          {
-            backgroundColor: theme.backgroundColor
-          }
-        ]}
-      >
+      <View style={[styles.row, { backgroundColor: theme.backgroundColor }]}>
         {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
         <View style={styles.container}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEventThrottle={16}>
+          <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onLayout={handleScrollViewLayout} onScroll={handleScroll}>
             <View style={{ height: gridHeight }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
               <View style={styles.row}>
                 {weeks.map((week, i) => (
-                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} />
+                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} loadAnimValue={loadAnimValues[i]} renderCell={renderCell} />
                 ))}
               </View>
             </View>
           </ScrollView>
 
-          <Tooltip visible={tooltip !== null} data={tooltip} theme={theme} renderTooltip={renderTooltip} />
+          <Tooltip visible={tooltip !== null} data={tooltip} theme={theme} renderTooltip={renderTooltip} tooltipLabel={tooltipLabel} tooltipEmptyLabel={tooltipEmptyLabel} />
         </View>
       </View>
     </TouchableWithoutFeedback>
