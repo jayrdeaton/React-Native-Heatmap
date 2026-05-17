@@ -11,7 +11,7 @@ export function generateColorScale(baseColor: string, colorScheme: 'light' | 'da
 }
 
 export function mergeColorScale(partial?: Partial<ColorScale>, colorScheme?: 'light' | 'dark', color?: string): ColorScale {
-  const baseColor = color ?? (colorScheme === 'dark' ? defaultDarkColor : defaultLightColor)
+  const baseColor = color || (colorScheme === 'dark' ? defaultDarkColor : defaultLightColor)
   const base = generateColorScale(baseColor, colorScheme ?? 'light')
   return { ...base, ...partial }
 }
@@ -49,6 +49,7 @@ export function computeDataRange(data: DataPoint[]): { min: number; max: number 
 }
 
 function parseHex(hex: string): [number, number, number] {
+  if (!hex) return [0, 0, 0]
   const c = hex.replace('#', '')
   const full =
     c.length === 3
