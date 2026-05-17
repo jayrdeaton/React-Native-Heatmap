@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ScrollView, TouchableWithoutFeedback, View } from 'react-native'
+import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapCalendarProps, TooltipData } from '../types'
 import { buildDataMap, mergeColorScale, mergeTheme } from '../utils/colorUtils'
@@ -9,7 +9,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, animated: _animated }: HeatmapCalendarProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip }: HeatmapCalendarProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   const { startDate, endDate } = useMemo(() => {
@@ -49,18 +49,20 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   return (
     <TouchableWithoutFeedback onPress={dismissTooltip}>
       <View
-        style={{
-          backgroundColor: theme.backgroundColor,
-          flexDirection: 'row'
-        }}
+        style={[
+          styles.row,
+          {
+            backgroundColor: theme.backgroundColor
+          }
+        ]}
       >
         {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View style={styles.container}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEventThrottle={16}>
             <View style={{ height: gridHeight }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-              <View style={{ flexDirection: 'row' }}>
+              <View style={styles.row}>
                 {weeks.map((week, i) => (
                   <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} onCellPress={handleCellPress} />
                 ))}
@@ -74,3 +76,8 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     </TouchableWithoutFeedback>
   )
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, position: 'relative' },
+  row: { flexDirection: 'row' }
+})

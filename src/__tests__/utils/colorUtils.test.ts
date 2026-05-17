@@ -1,5 +1,5 @@
-import { buildDataMap, DEFAULT_COLOR_SCALE, DEFAULT_THEME, getColorForValue, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
 import type { ColorScale, DataPoint } from '../../types'
+import { buildDataMap, DEFAULT_COLOR_SCALE, DEFAULT_THEME, getColorForValue, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
 
 describe('DEFAULT_COLOR_SCALE', () => {
   it('has 4 thresholds and 5 colors', () => {

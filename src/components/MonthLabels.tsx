@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import type { HeatmapTheme } from '../types'
 import type { MonthLabel } from '../utils/dateUtils'
@@ -14,17 +14,18 @@ function MonthLabelsComponent({ monthLabels, theme }: MonthLabelsProps) {
   const weekWidth = cellSize + gutterSize
 
   return (
-    <View style={{ height: monthLabelHeight, position: 'relative' }}>
+    <View style={[styles.view, { height: monthLabelHeight }]}>
       {monthLabels.map(({ label, weekIndex }) => (
         <Text
           key={`${label}-${weekIndex}`}
-          style={{
-            position: 'absolute',
-            left: weekIndex * weekWidth,
-            fontSize: 10,
-            color: monthLabelColor,
-            lineHeight: monthLabelHeight
-          }}
+          style={[
+            styles.text,
+            {
+              left: weekIndex * weekWidth,
+              color: monthLabelColor,
+              lineHeight: monthLabelHeight
+            }
+          ]}
         >
           {label}
         </Text>
@@ -32,5 +33,10 @@ function MonthLabelsComponent({ monthLabels, theme }: MonthLabelsProps) {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  view: { position: 'relative' },
+  text: { fontSize: 10, position: 'absolute' }
+})
 
 export const MonthLabels = memo(MonthLabelsComponent)

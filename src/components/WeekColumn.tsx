@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import type { CellMode, ColorScale, DataPoint, HeatmapTheme } from '../types'
 import { getColorForValue, getNormalizedValue } from '../utils/colorUtils'
@@ -19,7 +19,7 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, onCel
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
 
   return (
-    <View style={{ flexDirection: 'column', marginRight: gutterSize }}>
+    <View style={[styles.column, { marginRight: gutterSize }]}>
       {week.map((date, i) => {
         if (!date) {
           return (
@@ -44,5 +44,9 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, onCel
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  column: { flexDirection: 'column' }
+})
 
 export const WeekColumn = memo(WeekColumnComponent)

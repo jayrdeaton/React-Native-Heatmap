@@ -1,5 +1,6 @@
 import React from 'react'
 import { create } from 'react-test-renderer'
+
 import { HeatmapCalendar } from '../../components/HeatmapCalendar'
 import type { DataPoint } from '../../types'
 
