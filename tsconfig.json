@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "module": "commonjs",
+    "module": "ESNext",
     "lib": ["ES2017"],
     "jsx": "react-native",
     "strict": true,
@@ -11,8 +11,7 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0"
+    "moduleResolution": "bundler"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
