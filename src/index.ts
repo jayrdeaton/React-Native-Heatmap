@@ -3,7 +3,7 @@ import { HeatmapScatter } from './components/HeatmapScatter'
 
 const Heatmap = {
   Calendar: HeatmapCalendar,
-  Scatter: HeatmapScatter,
+  Scatter: HeatmapScatter
 }
 
 export default Heatmap

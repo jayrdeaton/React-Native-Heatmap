@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react'
 import Svg, { Circle } from 'react-native-svg'
-import { getDefaultDateRange, parseDate } from '../utils/dateUtils'
+
 import type { ScatterProps } from '../types'
+import { getDefaultDateRange, parseDate } from '../utils/dateUtils'
 
 const MAX_DOTS = 50
 
@@ -10,14 +11,7 @@ function rand(n: number): number {
   return x - Math.floor(x)
 }
 
-export function HeatmapScatter({
-  data,
-  startDate,
-  endDate,
-  width = 300,
-  height = 150,
-  dotRadius = 2,
-}: ScatterProps) {
+export function HeatmapScatter({ data, startDate, endDate, width = 300, height = 150, dotRadius = 2 }: ScatterProps) {
   const effectiveStart = useMemo(() => startDate ?? getDefaultDateRange().startDate, [startDate])
   const effectiveEnd = useMemo(() => endDate ?? getDefaultDateRange().endDate, [endDate])
 

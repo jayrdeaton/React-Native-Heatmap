@@ -9,3 +9,5 @@ export const RadialGradient = stub
 export const Rect = () => null
 export const Circle = () => null
 export const Stop = () => null
+export const G = stub
+export const ClipPath = stub

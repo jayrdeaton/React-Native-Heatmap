@@ -11,7 +11,8 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "types": ["jest", "react-native"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

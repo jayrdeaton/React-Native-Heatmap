@@ -90,11 +90,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
           <ScrollView ref={scrollViewRef} horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onLayout={handleScrollViewLayout} onScroll={handleScroll}>
             <View style={{ height: gridHeight }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-              <View style={styles.row}>
-                {ready && weeks.map((week, i) => (
-                  <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />
-                ))}
-              </View>
+              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />)}</View>
             </View>
           </ScrollView>
 
