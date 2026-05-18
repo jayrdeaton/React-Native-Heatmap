@@ -43,16 +43,12 @@ const StyleSheet = {
   flatten: (style: unknown) => style
 }
 
-module.exports = {
-  InteractionManager,
-  Animated,
-  Easing,
-  View: stub,
-  Text: stub,
-  ScrollView: stub,
-  Pressable: stub,
-  TouchableOpacity: stub,
-  TouchableWithoutFeedback: stub,
-  StyleSheet,
-  Platform: { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios ?? obj.default }
-}
+export { Animated, Easing, InteractionManager, StyleSheet }
+
+export const View = stub
+export const Text = stub
+export const ScrollView = stub
+export const Pressable = stub
+export const TouchableOpacity = stub
+export const TouchableWithoutFeedback = stub
+export const Platform = { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios ?? obj.default }
