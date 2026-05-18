@@ -92,6 +92,7 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const effectiveTotal = weightedSegments ? weightedSegments.reduce((acc, s) => acc + s.effectiveValue, 0) : 0
   const dominantSegment = weightedSegments ? weightedSegments.reduce((prev, cur) => (cur.effectiveValue > prev.effectiveValue ? cur : prev)) : null
 
+  const cellPad = Math.ceil(size * 0.12)
   const borderInset = 1
   const borderWidth = 1.5
 
@@ -172,8 +173,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   )
 
   return (
-    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button'>
-      <Animated.View style={[{ marginBottom: gutter }, { transform }]}>
+    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button' style={{ padding: cellPad }}>
+      <Animated.View style={[{ marginBottom: Math.max(0, gutter - cellPad * 2) }, { transform }]}>
         {renderCell ? (
           renderCell(dataPoint ?? null, date)
         ) : isAnimated ? (
