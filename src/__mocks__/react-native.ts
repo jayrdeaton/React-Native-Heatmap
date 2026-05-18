@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from 'react'
 
 const stub = ({ children }: { children?: React.ReactNode }) => children ?? null
@@ -10,7 +11,13 @@ const InteractionManager = {
 }
 
 const noop = () => {}
-const animatedObj = { start: (cb?: () => void) => { cb?.() }, stop: noop, reset: noop }
+const animatedObj = {
+  start: (cb?: () => void) => {
+    cb?.()
+  },
+  stop: noop,
+  reset: noop
+}
 
 class AnimatedValue {
   constructor(_v: number) {}
