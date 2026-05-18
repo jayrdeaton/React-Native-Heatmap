@@ -1,6 +1,6 @@
 {
   "name": "@rific/react-native-heatmap",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A GitHub-style activity heatmap for React Native with SVG rendering and customizable cell modes",
   "license": "MIT",
   "author": "Jay Deaton",
