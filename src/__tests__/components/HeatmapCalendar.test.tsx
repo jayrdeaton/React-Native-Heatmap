@@ -166,12 +166,6 @@ describe('Heatmap.Calendar', () => {
     }).not.toThrow()
   })
 
-  it('accepts scrollToToday={false}', () => {
-    expect(() => {
-      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} scrollToToday={false} />)
-    }).not.toThrow()
-  })
-
   it('accepts onEndReached prop', () => {
     const onEndReached = jest.fn()
     expect(() => {
@@ -179,9 +173,9 @@ describe('Heatmap.Calendar', () => {
     }).not.toThrow()
   })
 
-  it('accepts todayColor and todayBorderColor via theme', () => {
+  it('accepts todayBorderColor via theme', () => {
     expect(() => {
-      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayColor: 'red', todayBorderColor: 'blue' }} />)
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayBorderColor: 'blue' }} />)
     }).not.toThrow()
   })
 })

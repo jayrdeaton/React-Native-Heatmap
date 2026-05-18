@@ -18,7 +18,7 @@ module.exports = defineConfig([
   ...tsEslint.configs.recommended,
   prettierRecommended,
   {
-    ignores: ['dist/**', 'node_modules/**', 'lib/**', 'coverage/**', '**/*.js']
+    ignores: ['dist/**', 'node_modules/**', 'lib/**', 'coverage/**', '**/*.js', 'src/__mocks__/**', 'src/__tests__/**']
   },
   {
     plugins: {

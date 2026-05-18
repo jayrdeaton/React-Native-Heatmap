@@ -1,19 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { InteractionManager, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
-import { buildWeekGrid, getDefaultDateRange, getMonthLabels, getTodayString } from '../utils/dateUtils'
+import { buildWeekGrid, getDefaultDateRange, getMonthLabels } from '../utils/dateUtils'
 import { DayLabels } from './DayLabels'
 import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollToToday = true, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [ready, setReady] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
-  const scrollViewRef = useRef<ScrollView>(null)
-  const hasScrolledToToday = useRef(false)
 
   useEffect(() => {
     const handle = InteractionManager.runAfterInteractions(() => setReady(true))
@@ -34,25 +32,6 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
   const weeks = useMemo(() => buildWeekGrid(startDate, endDate), [startDate, endDate])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
-
-  // Scroll to today on mount (once per startDate/endDate change)
-  useEffect(() => {
-    if (!scrollToToday || !scrollViewRef.current) return
-    hasScrolledToToday.current = false
-  }, [startDate, endDate, scrollToToday])
-
-  const handleScrollViewLayout = useCallback(() => {
-    if (!scrollToToday || hasScrolledToToday.current || !scrollViewRef.current) return
-    hasScrolledToToday.current = true
-
-    const todayStr = getTodayString()
-    const todayColIndex = weeks.findIndex((week) => week.includes(todayStr))
-    if (todayColIndex < 0) return
-
-    const colWidth = theme.cellSize + theme.gutterSize
-    const x = todayColIndex * colWidth
-    scrollViewRef.current.scrollTo({ x: Math.max(0, x - colWidth * 3), animated: false })
-  }, [scrollToToday, weeks, theme.cellSize, theme.gutterSize])
 
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number }; contentSize: { width: number }; layoutMeasurement: { width: number } } }) => {
@@ -87,10 +66,10 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
         {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
         <View style={styles.container}>
-          <ScrollView ref={scrollViewRef} horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onLayout={handleScrollViewLayout} onScroll={handleScroll}>
-            <View style={{ height: gridHeight }}>
+          <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
+            <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} />)}</View>
+              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={tooltip?.date ?? null} />)}</View>
             </View>
           </ScrollView>
 
@@ -103,5 +82,6 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
 
 const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
-  row: { flexDirection: 'row' }
+  row: { flexDirection: 'row' },
+  scrollView: { transform: [{ scaleX: -1 }] }
 })

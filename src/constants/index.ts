@@ -16,19 +16,20 @@ export const defaultTheme: HeatmapTheme = {
   monthLabelColor: '#57606a',
   dayLabelColor: '#57606a',
   backgroundColor: 'transparent',
-  tooltipBackgroundColor: '#1b1f23',
-  tooltipTextColor: '#ffffff',
+  tooltipBackgroundColor: '#f0f0f0',
+  tooltipTextColor: '#0f0f0f',
   monthLabelHeight: 18,
   dayLabelWidth: 28,
-  todayColor: '#4183c4',
-  todayBorderColor: '#4183c4'
+  todayBorderColor: '#0f0f0f',
+  selectedBorderColor: '#0f0f0f'
 }
 
 export const defaultDarkTheme: HeatmapTheme = {
   ...defaultTheme,
   monthLabelColor: '#8b949e',
   dayLabelColor: '#8b949e',
-  tooltipBackgroundColor: '#30363d',
-  todayColor: '#58a6ff',
-  todayBorderColor: '#58a6ff'
+  tooltipBackgroundColor: '#0f0f0f',
+  tooltipTextColor: '#f0f0f0',
+  todayBorderColor: '#f0f0f0',
+  selectedBorderColor: '#f0f0f0'
 }

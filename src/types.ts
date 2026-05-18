@@ -31,8 +31,8 @@ export interface HeatmapTheme {
   tooltipTextColor: string
   monthLabelHeight: number
   dayLabelWidth: number
-  todayColor: string
   todayBorderColor: string
+  selectedBorderColor: string
 }
 
 export interface TooltipData {
@@ -70,7 +70,6 @@ export interface HeatmapProps {
   animated?: boolean
   animationDirection?: 'ltr' | 'rtl'
   animationDuration?: number
-  scrollToToday?: boolean
   onEndReached?: () => void
   onEndReachedThreshold?: number
   tooltipLabel?: string

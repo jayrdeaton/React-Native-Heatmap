@@ -17,10 +17,12 @@ interface HeatmapCellProps {
   segments?: Segment[]
   onPress?: (date: string, value: number) => void
   isToday?: boolean
+  isSelected?: boolean
   animated?: boolean
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   dataPoint?: DataPoint | null
   todayBorderColor: string
+  selectedBorderColor: string
   dataFadeDelay?: number
   animationDuration?: number
 }
@@ -36,7 +38,7 @@ function getDotPositions(n: number, size: number): { x: number; y: number }[] {
   }))
 }
 
-function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
+function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
   const pressScale = useRef(new Animated.Value(1)).current
   const pulseScale = useRef(new Animated.Value(1)).current
   // Top data layer: starts at 1 if cell has data on mount, 0 if not
@@ -96,7 +98,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const borderInset = 1
   const borderWidth = 1.5
 
-  const todayBorder = isToday ? <Rect x={borderInset} y={borderInset} width={size - borderInset * 2} height={size - borderInset * 2} rx={Math.max(0, radius - borderInset)} ry={Math.max(0, radius - borderInset)} fill='none' stroke={todayBorderColor} strokeWidth={borderWidth} /> : null
+  const borderColor = isToday ? todayBorderColor : selectedBorderColor
+  const todayBorder = isToday || isSelected ? <Rect x={borderInset} y={borderInset} width={size - borderInset * 2} height={size - borderInset * 2} rx={Math.max(0, radius - borderInset)} ry={Math.max(0, radius - borderInset)} fill='none' stroke={borderColor} strokeWidth={borderWidth} /> : null
 
   const dataLayer = (
     <Svg width={size} height={size}>
