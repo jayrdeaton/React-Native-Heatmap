@@ -20,7 +20,13 @@
     "lint": "eslint src",
     "fix": "eslint src --fix",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "prepublishOnly": "npm run build",
+    "preversion": "npm run lint && npm test",
+    "release": "git push --follow-tags",
+    "release:patch": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags"
   },
   "peerDependencies": {
     "react": ">=17.0.0",
