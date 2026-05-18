@@ -5,7 +5,7 @@ GitHub-style activity heatmap for React Native. SVG cells with multiple visualiz
 ## Installation
 
 ```sh
-npm install @rific/react-native-heatmap
+npm install @rific/heatmap
 ```
 
 ### Peer dependencies
@@ -19,7 +19,7 @@ Follow the [react-native-svg installation guide](https://github.com/software-man
 ## Usage
 
 ```tsx
-import Heatmap from '@rific/react-native-heatmap'
+import Heatmap from '@rific/heatmap'
 
 const data = [
   { date: '2026-01-15', value: 3 },
@@ -198,7 +198,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 All types are exported:
 
 ```ts
-import Heatmap, { type CellMode, type ColorScale, type DataPoint, type HeatmapProps, type HeatmapTheme, type TooltipData } from '@rific/react-native-heatmap'
+import Heatmap, { type CellMode, type ColorScale, type DataPoint, type HeatmapProps, type HeatmapTheme, type TooltipData } from '@rific/heatmap'
 ```
 
 ## Development
