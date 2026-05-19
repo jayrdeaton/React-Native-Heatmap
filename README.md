@@ -1,4 +1,4 @@
-# react-native-heatmap
+# @rific/heatmap
 
 GitHub-style activity heatmap for React Native. SVG cells with multiple visualization modes, touch tooltips, animations, and a flexible color scale API.
 
