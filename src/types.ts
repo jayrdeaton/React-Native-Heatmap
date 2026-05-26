@@ -52,6 +52,46 @@ export interface ScatterProps {
   dotRadius?: number
 }
 
+export interface TimelineDataPoint {
+  timestamp: string
+  value: number
+  color?: string
+  metadata?: Record<string, unknown>
+}
+
+export type TimelineGranularity = 'minute' | 'hour' | 'day'
+
+export interface TimeBucket {
+  startTime: Date
+  endTime: Date
+  granularity: TimelineGranularity
+  value: number
+  color?: string
+}
+
+export interface TimelineTheme {
+  height: number
+  labelHeight: number
+  backgroundColor: string
+  labelColor: string
+  emptyColor: string
+}
+
+export interface TimelineProps {
+  data: TimelineDataPoint[]
+  startTime?: Date
+  endTime?: Date
+  zoom?: number
+  minZoom?: number
+  maxZoom?: number
+  color?: string
+  colorScale?: Partial<ColorScale>
+  colorScheme?: 'light' | 'dark'
+  theme?: Partial<TimelineTheme>
+  onZoomChange?: (zoom: number) => void
+  onTimePress?: (bucket: TimeBucket) => void
+}
+
 export interface HeatmapProps {
   data: DataPoint[]
   startDate?: Date
