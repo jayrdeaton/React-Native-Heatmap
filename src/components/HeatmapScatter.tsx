@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import Svg, { Circle } from 'react-native-svg'
 
 import type { ScatterProps } from '../types'
