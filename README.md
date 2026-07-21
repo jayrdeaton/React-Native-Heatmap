@@ -53,7 +53,6 @@ export default function App() {
 | `showMonthLabels` | `boolean` | `true` | Show month name labels above the grid. |
 | `showDayLabels` | `boolean` | `true` | Show Mon / Wed / Fri labels on the left. |
 | `animated` | `boolean` | `false` | Enable all animations (load ripple, today pulse, press spring). |
-| `scrollToToday` | `boolean` | `true` | Scroll to the current week on mount. |
 | `scrollEnabled` | `boolean` | `true` | Enable or disable horizontal scrolling. |
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | — | Called when a cell is tapped. |
 | `onEndReached` | `() => void` | — | Called when the user scrolls near the right edge. Use for infinite scroll. |
@@ -163,8 +162,8 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
     backgroundColor: 'transparent',
     tooltipBackgroundColor: '#1b1f23',
     tooltipTextColor: '#ffffff',
-    todayColor: '#4183c4',
     todayBorderColor: '#4183c4',
+    selectedBorderColor: '#4183c4',
   }}
 />
 ```
@@ -195,10 +194,17 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 
 ## TypeScript
 
-All types are exported:
+Types for the documented API are exported:
 
 ```ts
-import Heatmap, { type CellMode, type ColorScale, type DataPoint, type HeatmapProps, type HeatmapTheme, type TooltipData } from '@rific/heatmap'
+import Heatmap, {
+  type CellMode,
+  type ColorScale,
+  type DataPoint,
+  type HeatmapProps,
+  type HeatmapTheme,
+  type TooltipData,
+} from '@rific/heatmap'
 ```
 
 ## Development
