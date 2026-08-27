@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { PanResponder, StyleSheet, Text, View } from 'react-native'
 import { Rect, Svg } from 'react-native-svg'
 
@@ -26,6 +26,81 @@ const defaultThemeDark: TimelineTheme = {
   backgroundColor: 'transparent',
   labelColor: '#8b949e',
   emptyColor: '#161b22'
+}
+
+function getDistance(touches: { pageX: number; pageY: number }[]) {
+  const [a, b] = touches
+  return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY)
+}
+
+// Builds the PanResponder from the mirror refs (see the "Stable refs mirroring the latest render
+// values" comment below) plus the permanently-stable callbacks. Constructed exactly once, from a
+// run-once layout effect below — never during render — since the ref-safety lint rule flags any
+// render-phase function call (useMemo factory or useState lazy initializer alike) that receives a
+// ref as an argument, and this needs several.
+function buildPanResponder(params: { boundsRef: MutableRefObject<{ start: Date; end: Date }>; dataMapsRef: MutableRefObject<Record<TimelineGranularity, Map<number, number>>>; minZoomRef: MutableRefObject<number>; maxZoomRef: MutableRefObject<number>; onZoomChangeRef: MutableRefObject<((zoom: number) => void) | undefined>; onTimePressRef: MutableRefObject<((bucket: TimeBucket) => void) | undefined>; zoomRef: MutableRefObject<number>; scrollXRef: MutableRefObject<number>; gestureTypeRef: MutableRefObject<'pan' | 'pinch' | 'none'>; lastScrollXRef: MutableRefObject<number>; pinchStartDistRef: MutableRefObject<number>; pinchStartZoomRef: MutableRefObject<number>; pinchMidXRef: MutableRefObject<number>; cancelMomentum: () => void; getClampedScroll: (x: number, zoom: number) => number; startMomentum: (vx: number) => void; setZoom: (zoom: number) => void; setScrollX: (scrollX: number) => void }) {
+  const { boundsRef, dataMapsRef, minZoomRef, maxZoomRef, onZoomChangeRef, onTimePressRef, zoomRef, scrollXRef, gestureTypeRef, lastScrollXRef, pinchStartDistRef, pinchStartZoomRef, pinchMidXRef, cancelMomentum, getClampedScroll, startMomentum, setZoom, setScrollX } = params
+
+  return PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => {
+      cancelMomentum()
+      const touches = evt.nativeEvent.touches as unknown as { pageX: number; pageY: number; locationX: number }[]
+      lastScrollXRef.current = scrollXRef.current
+      if (touches.length >= 2) {
+        gestureTypeRef.current = 'pinch'
+        pinchStartDistRef.current = getDistance(touches)
+        pinchStartZoomRef.current = zoomRef.current
+        pinchMidXRef.current = (touches[0].locationX + touches[1].locationX) / 2
+      } else {
+        gestureTypeRef.current = 'pan'
+      }
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      const touches = evt.nativeEvent.touches as unknown as { pageX: number; pageY: number }[]
+      if (gestureTypeRef.current === 'pinch' || touches.length >= 2) {
+        gestureTypeRef.current = 'pinch'
+        if (touches.length >= 2) {
+          const dist = getDistance(touches)
+          const ratio = dist / pinchStartDistRef.current
+          const newZoom = clampZoom(pinchStartZoomRef.current * ratio, minZoomRef.current, maxZoomRef.current)
+          const midX = pinchMidXRef.current
+          const worldAtMid = (scrollXRef.current + midX) / zoomRef.current
+          zoomRef.current = newZoom
+          scrollXRef.current = getClampedScroll(worldAtMid * newZoom - midX, newZoom)
+          onZoomChangeRef.current?.(newZoom)
+          setZoom(zoomRef.current)
+          setScrollX(scrollXRef.current)
+        }
+      } else {
+        scrollXRef.current = getClampedScroll(lastScrollXRef.current - gestureState.dx, zoomRef.current)
+        setScrollX(scrollXRef.current)
+      }
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      if (gestureTypeRef.current === 'pan') {
+        if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
+          const nativeEvt = evt.nativeEvent as unknown as { locationX?: number }
+          const touchX = nativeEvt.locationX ?? gestureState.x0 - 0
+          const worldX = scrollXRef.current + touchX
+          const gran = getGranularity(zoomRef.current)
+          const b = boundsRef.current
+          const timeMs = b.start.getTime() + (worldX / zoomRef.current) * 3600000
+          const start = bucketStart(new Date(timeMs), gran)
+          const end = new Date(start.getTime() + BUCKET_MS[gran])
+          const value = dataMapsRef.current[gran].get(start.getTime()) ?? 0
+          onTimePressRef.current?.({ startTime: start, endTime: end, granularity: gran, value })
+        } else {
+          startMomentum(gestureState.vx)
+        }
+      }
+      gestureTypeRef.current = 'none'
+    },
+    onPanResponderTerminate: () => {
+      gestureTypeRef.current = 'none'
+    }
+  })
 }
 
 export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20, minZoom = 0.5, maxZoom = 2000, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, onZoomChange, onTimePress }: TimelineProps) {
@@ -59,31 +134,43 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
     }
   }, [dataMaps])
 
-  const [, setFrame] = useState(0)
-  const forceUpdate = useCallback(() => setFrame((n) => n + 1), [])
+  const [zoom, setZoom] = useState(zoomProp)
+  const [scrollX, setScrollX] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
 
-  const scrollXRef = useRef(0)
-  const zoomRef = useRef(zoomProp)
-  const containerWidthRef = useRef(0)
+  // zoom is an internal, gesture-adjustable value that also tracks the controlled zoomProp
+  // when it changes externally (see https://react.dev/learn/you-might-not-need-an-effect
+  // #adjusting-some-state-when-a-prop-changes).
+  const [prevZoomProp, setPrevZoomProp] = useState(zoomProp)
+  if (zoomProp !== prevZoomProp) {
+    setPrevZoomProp(zoomProp)
+    setZoom(zoomProp)
+  }
+
+  // Stable refs mirroring the latest render values — read (and, mid-gesture, written directly)
+  // by the PanResponder callbacks below, so panResponder itself stays memoized across renders
+  // instead of being recreated on every touch-move/zoom/scroll change.
+  const boundsRef = useRef(bounds)
+  const dataMapsRef = useRef(dataMaps)
+  const minZoomRef = useRef(minZoom)
+  const maxZoomRef = useRef(maxZoom)
+  const onZoomChangeRef = useRef(onZoomChange)
+  const onTimePressRef = useRef(onTimePress)
+  const zoomRef = useRef(zoom)
+  const scrollXRef = useRef(scrollX)
+  const containerWidthRef = useRef(containerWidth)
 
   useEffect(() => {
-    zoomRef.current = zoomProp
-    forceUpdate()
-  }, [zoomProp, forceUpdate])
-
-  // Stable refs for latest prop values — read by gesture callbacks
-  const boundsRef = useRef(bounds)
-  boundsRef.current = bounds
-  const dataMapsRef = useRef(dataMaps)
-  dataMapsRef.current = dataMaps
-  const minZoomRef = useRef(minZoom)
-  minZoomRef.current = minZoom
-  const maxZoomRef = useRef(maxZoom)
-  maxZoomRef.current = maxZoom
-  const onZoomChangeRef = useRef(onZoomChange)
-  onZoomChangeRef.current = onZoomChange
-  const onTimePressRef = useRef(onTimePress)
-  onTimePressRef.current = onTimePress
+    boundsRef.current = bounds
+    dataMapsRef.current = dataMaps
+    minZoomRef.current = minZoom
+    maxZoomRef.current = maxZoom
+    onZoomChangeRef.current = onZoomChange
+    onTimePressRef.current = onTimePress
+    zoomRef.current = zoom
+    scrollXRef.current = scrollX
+    containerWidthRef.current = containerWidth
+  })
 
   const gestureTypeRef = useRef<'pan' | 'pinch' | 'none'>('none')
   const lastScrollXRef = useRef(0)
@@ -115,7 +202,7 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
         }
         scrollXRef.current = getClampedScroll(scrollXRef.current + velocity, zoomRef.current)
         velocity *= 0.95
-        setFrame((n) => n + 1)
+        setScrollX(scrollXRef.current)
         momentumFrameRef.current = requestAnimationFrame(animate)
       }
       momentumFrameRef.current = requestAnimationFrame(animate)
@@ -123,79 +210,41 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
     [getClampedScroll]
   )
 
-  const getDistance = (touches: { pageX: number; pageY: number }[]) => {
-    const [a, b] = touches
-    return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY)
-  }
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (evt) => {
-          cancelMomentum()
-          const touches = evt.nativeEvent.touches as unknown as { pageX: number; pageY: number; locationX: number }[]
-          lastScrollXRef.current = scrollXRef.current
-          if (touches.length >= 2) {
-            gestureTypeRef.current = 'pinch'
-            pinchStartDistRef.current = getDistance(touches)
-            pinchStartZoomRef.current = zoomRef.current
-            pinchMidXRef.current = (touches[0].locationX + touches[1].locationX) / 2
-          } else {
-            gestureTypeRef.current = 'pan'
-          }
-        },
-        onPanResponderMove: (evt, gestureState) => {
-          const touches = evt.nativeEvent.touches as unknown as { pageX: number; pageY: number }[]
-          if (gestureTypeRef.current === 'pinch' || touches.length >= 2) {
-            gestureTypeRef.current = 'pinch'
-            if (touches.length >= 2) {
-              const dist = getDistance(touches)
-              const ratio = dist / pinchStartDistRef.current
-              const newZoom = clampZoom(pinchStartZoomRef.current * ratio, minZoomRef.current, maxZoomRef.current)
-              const midX = pinchMidXRef.current
-              const worldAtMid = (scrollXRef.current + midX) / zoomRef.current
-              zoomRef.current = newZoom
-              scrollXRef.current = getClampedScroll(worldAtMid * newZoom - midX, newZoom)
-              onZoomChangeRef.current?.(newZoom)
-              setFrame((n) => n + 1)
-            }
-          } else {
-            scrollXRef.current = getClampedScroll(lastScrollXRef.current - gestureState.dx, zoomRef.current)
-            setFrame((n) => n + 1)
-          }
-        },
-        onPanResponderRelease: (evt, gestureState) => {
-          if (gestureTypeRef.current === 'pan') {
-            if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
-              const nativeEvt = evt.nativeEvent as unknown as { locationX?: number }
-              const touchX = nativeEvt.locationX ?? gestureState.x0 - 0
-              const worldX = scrollXRef.current + touchX
-              const gran = getGranularity(zoomRef.current)
-              const b = boundsRef.current
-              const timeMs = b.start.getTime() + (worldX / zoomRef.current) * 3600000
-              const start = bucketStart(new Date(timeMs), gran)
-              const end = new Date(start.getTime() + BUCKET_MS[gran])
-              const value = dataMapsRef.current[gran].get(start.getTime()) ?? 0
-              onTimePressRef.current?.({ startTime: start, endTime: end, granularity: gran, value })
-            } else {
-              startMomentum(gestureState.vx)
-            }
-          }
-          gestureTypeRef.current = 'none'
-        },
-        onPanResponderTerminate: () => {
-          gestureTypeRef.current = 'none'
-        }
-      }),
-    [cancelMomentum, getClampedScroll, startMomentum]
-  )
-
-  // Read refs for current render frame
-  const zoom = zoomRef.current
-  const scrollX = scrollXRef.current
-  const containerWidth = containerWidthRef.current
+  // buildPanResponder's config closes over several refs, so constructing it counts as "passing a
+  // ref to a function" if done anywhere in the render phase itself (useMemo's factory and even a
+  // useState lazy initializer both still run synchronously as part of rendering). An effect is the
+  // one context that genuinely runs after render/commit, so — since cancelMomentum/getClampedScroll
+  // /startMomentum are permanently stable (their own useCallback deps never change) and this only
+  // ever needs to run once — build it in a run-once layout effect instead. panResponder is briefly
+  // null on the very first render (before gesture handlers can attach), which is unobservable in
+  // practice: a layout effect commits before the screen paints, well before any touch can land.
+  const [panResponder, setPanResponder] = useState<ReturnType<typeof buildPanResponder> | null>(null)
+  useLayoutEffect(() => {
+    setPanResponder(
+      (current) =>
+        current ??
+        buildPanResponder({
+          boundsRef,
+          dataMapsRef,
+          minZoomRef,
+          maxZoomRef,
+          onZoomChangeRef,
+          onTimePressRef,
+          zoomRef,
+          scrollXRef,
+          gestureTypeRef,
+          lastScrollXRef,
+          pinchStartDistRef,
+          pinchStartZoomRef,
+          pinchMidXRef,
+          cancelMomentum,
+          getClampedScroll,
+          startMomentum,
+          setZoom,
+          setScrollX
+        })
+    )
+  }, [cancelMomentum, getClampedScroll, startMomentum])
 
   const gran = getGranularity(zoom)
   const cellWidth = getCellWidth(gran, zoom)
@@ -235,9 +284,9 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
       style={[styles.container, { height: theme.height + theme.labelHeight, backgroundColor: theme.backgroundColor }]}
       onLayout={(e) => {
         containerWidthRef.current = e.nativeEvent.layout.width
-        forceUpdate()
+        setContainerWidth(containerWidthRef.current)
       }}
-      {...panResponder.panHandlers}
+      {...(panResponder?.panHandlers ?? {})}
     >
       <View style={[styles.labelRow, { height: theme.labelHeight }]}>
         {labels.map((l) => (

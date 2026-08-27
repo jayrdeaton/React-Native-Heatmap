@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useRef } from 'react'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
@@ -39,10 +39,10 @@ function getDotPositions(n: number, size: number): { x: number; y: number }[] {
 }
 
 function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
-  const pressScale = useRef(new Animated.Value(1)).current
-  const pulseScale = useRef(new Animated.Value(1)).current
+  const [pressScale] = useState(() => new Animated.Value(1))
+  const [pulseScale] = useState(() => new Animated.Value(1))
   // Top data layer: starts at 1 if cell has data on mount, 0 if not
-  const dataFadeAnim = useRef(new Animated.Value(isAnimated ? (value > 0 ? 1 : 0) : 1)).current
+  const [dataFadeAnim] = useState(() => new Animated.Value(isAnimated ? (value > 0 ? 1 : 0) : 1))
   const prevValueRef = useRef(value)
 
   useEffect(() => {
