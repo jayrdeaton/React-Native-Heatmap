@@ -1,5 +1,4 @@
 {
   "extends": "@infinitetoken/tsconfig/react-native",
-  "include": ["src"],
-  "exclude": [".claude/worktrees/**"]
+  "include": ["src"]
 }
