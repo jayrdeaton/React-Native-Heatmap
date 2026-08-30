@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
@@ -172,9 +172,114 @@ describe('Heatmap.Calendar', () => {
     }).not.toThrow()
   })
 
+  it('renders with autoScale disabled', () => {
+    expect(() => {
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} autoScale={false} />)
+    }).not.toThrow()
+  })
+
   it('accepts todayBorderColor via theme', () => {
     expect(() => {
       render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayBorderColor: 'blue' }} />)
     }).not.toThrow()
+  })
+
+  describe('handleScroll', () => {
+    // jsdom exposes scrollWidth/clientWidth as getter-only properties, so they must be
+    // overridden with defineProperty before firing the scroll event (scrollLeft has a real
+    // setter and can go through fireEvent's target option).
+    function stubScrollMetrics(el: HTMLElement, scrollWidth: number, clientWidth: number) {
+      Object.defineProperty(el, 'scrollWidth', { value: scrollWidth, configurable: true })
+      Object.defineProperty(el, 'clientWidth', { value: clientWidth, configurable: true })
+    }
+
+    it('does nothing when onEndReached is not provided', () => {
+      const { getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+      const scrollView = getByTestId('mock-scrollview')
+      stubScrollMetrics(scrollView, 1000, 300)
+      expect(() => {
+        fireEvent.scroll(scrollView, { target: { scrollLeft: 650 } })
+      }).not.toThrow()
+    })
+
+    it('calls onEndReached once the scroll position crosses the threshold', () => {
+      const onEndReached = jest.fn()
+      const { getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onEndReached={onEndReached} />)
+      const scrollView = getByTestId('mock-scrollview')
+      stubScrollMetrics(scrollView, 1000, 300)
+      fireEvent.scroll(scrollView, { target: { scrollLeft: 650 } })
+      expect(onEndReached).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not call onEndReached while far from the end', () => {
+      const onEndReached = jest.fn()
+      const { getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onEndReached={onEndReached} />)
+      const scrollView = getByTestId('mock-scrollview')
+      stubScrollMetrics(scrollView, 1000, 300)
+      fireEvent.scroll(scrollView, { target: { scrollLeft: 0 } })
+      expect(onEndReached).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('handleCellPress', () => {
+    it('calls onDayPress with the matching data point for a date with data', async () => {
+      const onDayPress = jest.fn()
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onDayPress={onDayPress} />)
+      const cell = await screen.findByLabelText('2026-01-15: 3 events')
+      fireEvent.click(cell)
+      expect(onDayPress).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-01-15', value: 3 }), '2026-01-15')
+    })
+
+    it('calls onDayPress with null for a date with no data', async () => {
+      const onDayPress = jest.fn()
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onDayPress={onDayPress} />)
+      const cell = await screen.findByLabelText('2026-01-16: 0 events')
+      fireEvent.click(cell)
+      expect(onDayPress).toHaveBeenCalledWith(null, '2026-01-16')
+    })
+
+    // NOTE: the mock TouchableWithoutFeedback and Pressable both render as real DOM elements
+    // with native click semantics, and the cell is a DOM descendant of the outer
+    // TouchableWithoutFeedback. A click on a cell therefore always bubbles up and also fires
+    // dismissTooltip within the same event/batch, resetting the tooltip to null right after it
+    // is set — unlike real React Native, where a touch claimed by a nested Pressable would not
+    // also reach the ancestor TouchableWithoutFeedback's onPress. This makes the tooltip never
+    // observably non-null in the DOM after a click, and means the `prev?.date === date` (close
+    // an already-open tooltip for the same date) branch of the ternary on line 51 can't be
+    // driven true via simulated clicks — going into every click, `prev` is always null. These
+    // tests cover what's actually reachable: onDayPress firing with the right args on repeated
+    // and differing clicks, independent of the (unobservable here) tooltip open/close state.
+    it('calls onDayPress on every click, independent of tooltip open/dismiss state', async () => {
+      const onDayPress = jest.fn()
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onDayPress={onDayPress} />)
+      const cell = await screen.findByLabelText('2026-01-15: 3 events')
+      fireEvent.click(cell)
+      fireEvent.click(cell)
+      expect(onDayPress).toHaveBeenCalledTimes(2)
+      expect(onDayPress).toHaveBeenNthCalledWith(1, expect.objectContaining({ date: '2026-01-15', value: 3 }), '2026-01-15')
+      expect(onDayPress).toHaveBeenNthCalledWith(2, expect.objectContaining({ date: '2026-01-15', value: 3 }), '2026-01-15')
+    })
+
+    it('calls onDayPress with each date-specific point when different cells are clicked in sequence', async () => {
+      const onDayPress = jest.fn()
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onDayPress={onDayPress} />)
+      const firstCell = await screen.findByLabelText('2026-01-15: 3 events')
+      const secondCell = await screen.findByLabelText('2026-02-20: 12 events')
+      fireEvent.click(firstCell)
+      fireEvent.click(secondCell)
+      expect(onDayPress).toHaveBeenNthCalledWith(1, expect.objectContaining({ date: '2026-01-15', value: 3 }), '2026-01-15')
+      expect(onDayPress).toHaveBeenNthCalledWith(2, expect.objectContaining({ date: '2026-02-20', value: 12 }), '2026-02-20')
+    })
+  })
+
+  describe('dismissTooltip', () => {
+    it('runs without throwing when the outer touchable wrapper is pressed directly', async () => {
+      const { container, getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+      await screen.findByLabelText('2026-01-15: 3 events')
+      expect(() => {
+        fireEvent.click(getByTestId('mock-touchable-without-feedback'))
+      }).not.toThrow()
+      expect(container.textContent).not.toContain('3 events')
+    })
   })
 })

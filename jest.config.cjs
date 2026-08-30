@@ -1,27 +1,6 @@
-/** @type {import('jest').Config} */
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
-  roots: ['<rootDir>/src'],
+module.exports = require('@infinitetoken/jest-config/react-native')({
   moduleNameMapper: {
     '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.ts',
     '^react-native$': '<rootDir>/src/__mocks__/react-native.ts'
-  },
-  transform: {
-    '^.+\\.tsx?$': [
-      'ts-jest',
-      {
-        tsconfig: {
-          jsx: 'react-jsx',
-          module: 'CommonJS',
-          moduleResolution: 'node',
-          ignoreDeprecations: '5.0',
-          types: ['jest', 'node']
-        }
-      }
-    ]
-  },
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs']
-}
+  }
+})

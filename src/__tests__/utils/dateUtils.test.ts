@@ -99,6 +99,19 @@ describe('getMonthLabels', () => {
     }
   })
 
+  it('skips a week that is entirely empty strings', () => {
+    const weeks = [
+      ['2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09', '2026-01-10'],
+      ['', '', '', '', '', '', ''],
+      ['2026-02-01', '2026-02-02', '2026-02-03', '2026-02-04', '2026-02-05', '2026-02-06', '2026-02-07']
+    ]
+    const labels = getMonthLabels(weeks)
+    expect(labels).toEqual([
+      { label: 'Jan', weekIndex: 0 },
+      { label: 'Feb', weekIndex: 2 }
+    ])
+  })
+
   it('weekIndex values are in ascending order', () => {
     const { startDate, endDate } = getDefaultDateRange()
     const weeks = buildWeekGrid(startDate, endDate)

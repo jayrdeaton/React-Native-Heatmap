@@ -46,6 +46,14 @@ describe('getColorForValue', () => {
     expect(getColorForValue(100, scale)).toBe('#max')
   })
 
+  it('returns colors[0] for a positive value below every threshold', () => {
+    const customScale: ColorScale = {
+      thresholds: [5, 10],
+      colors: ['#empty', '#low', '#high']
+    }
+    expect(getColorForValue(2, customScale)).toBe('#empty')
+  })
+
   it('works with the default color scale', () => {
     expect(getColorForValue(0, defaultColorScale)).toBe(defaultColorScale.emptyColor)
     expect(getColorForValue(1, defaultColorScale)).toBe(defaultColorScale.colors[1])
