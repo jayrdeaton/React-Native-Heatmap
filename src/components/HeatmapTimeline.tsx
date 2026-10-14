@@ -35,7 +35,7 @@ function getDistance(touches: { pageX: number; pageY: number }[]) {
 
 // Builds the PanResponder from the mirror refs (see the "Stable refs mirroring the latest render
 // values" comment below) plus the permanently-stable callbacks. Constructed exactly once, from a
-// run-once layout effect below — never during render — since the ref-safety lint rule flags any
+// run-once layout effect below - never during render - since the ref-safety lint rule flags any
 // render-phase function call (useMemo factory or useState lazy initializer alike) that receives a
 // ref as an argument, and this needs several.
 function buildPanResponder(params: { boundsRef: MutableRefObject<{ start: Date; end: Date }>; dataMapsRef: MutableRefObject<Record<TimelineGranularity, Map<number, number>>>; minZoomRef: MutableRefObject<number>; maxZoomRef: MutableRefObject<number>; onZoomChangeRef: MutableRefObject<((zoom: number) => void) | undefined>; onTimePressRef: MutableRefObject<((bucket: TimeBucket) => void) | undefined>; zoomRef: MutableRefObject<number>; scrollXRef: MutableRefObject<number>; gestureTypeRef: MutableRefObject<'pan' | 'pinch' | 'none'>; lastScrollXRef: MutableRefObject<number>; pinchStartDistRef: MutableRefObject<number>; pinchStartZoomRef: MutableRefObject<number>; pinchMidXRef: MutableRefObject<number>; cancelMomentum: () => void; getClampedScroll: (x: number, zoom: number) => number; startMomentum: (vx: number) => void; setZoom: (zoom: number) => void; setScrollX: (scrollX: number) => void }) {
@@ -147,7 +147,7 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
     setZoom(zoomProp)
   }
 
-  // Stable refs mirroring the latest render values — read (and, mid-gesture, written directly)
+  // Stable refs mirroring the latest render values - read (and, mid-gesture, written directly)
   // by the PanResponder callbacks below, so panResponder itself stays memoized across renders
   // instead of being recreated on every touch-move/zoom/scroll change.
   const boundsRef = useRef(bounds)
@@ -213,9 +213,9 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
   // buildPanResponder's config closes over several refs, so constructing it counts as "passing a
   // ref to a function" if done anywhere in the render phase itself (useMemo's factory and even a
   // useState lazy initializer both still run synchronously as part of rendering). An effect is the
-  // one context that genuinely runs after render/commit, so — since cancelMomentum/getClampedScroll
+  // one context that genuinely runs after render/commit, so - since cancelMomentum/getClampedScroll
   // /startMomentum are permanently stable (their own useCallback deps never change) and this only
-  // ever needs to run once — build it in a run-once layout effect instead. panResponder is briefly
+  // ever needs to run once - build it in a run-once layout effect instead. panResponder is briefly
   // null on the very first render (before gesture handlers can attach), which is unobservable in
   // practice: a layout effect commits before the screen paints, well before any touch can land.
   const [panResponder, setPanResponder] = useState<ReturnType<typeof buildPanResponder> | null>(null)

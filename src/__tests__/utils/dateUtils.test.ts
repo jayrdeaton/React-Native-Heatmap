@@ -53,7 +53,7 @@ describe('buildWeekGrid', () => {
   })
 
   it('fills trailing days with empty strings after endDate', () => {
-    // May 20 2026 is a Wednesday — rest of the week (Thu-Sat) should be empty
+    // May 20 2026 is a Wednesday - rest of the week (Thu-Sat) should be empty
     const start = new Date(2026, 4, 20)
     const end = new Date(2026, 4, 20)
     const weeks = buildWeekGrid(start, end)

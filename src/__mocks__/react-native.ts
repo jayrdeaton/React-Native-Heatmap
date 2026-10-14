@@ -6,7 +6,7 @@ type LayoutEvent = { nativeEvent: { layout: { x: number; y: number; width: numbe
 
 // Real View reports its measured size via onLayout after mount. Fires once with a fixed
 // size so components that gate rendering on a measured width (e.g. HeatmapTimeline) are
-// testable — most callers don't pass onLayout, so this is a no-op for them.
+// testable - most callers don't pass onLayout, so this is a no-op for them.
 const View = ({ children, onLayout }: { children?: React.ReactNode; onLayout?: (e: LayoutEvent) => void }) => {
   useEffect(() => {
     onLayout?.({ nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 100 } } })
@@ -56,7 +56,7 @@ const StyleSheet = {
 
 // `create` is a jest.fn so tests can pull the gesture-handler config it was called
 // with (e.g. `PanResponder.create.mock.results.at(-1)?.value.panHandlers`) and invoke
-// onPanResponderGrant/Move/Release/Terminate directly — the View stub below discards
+// onPanResponderGrant/Move/Release/Terminate directly - the View stub below discards
 // props, so there's no DOM element to dispatch real touch events through.
 const PanResponder = {
   create: jest.fn((config: Record<string, unknown>) => ({ panHandlers: config }))

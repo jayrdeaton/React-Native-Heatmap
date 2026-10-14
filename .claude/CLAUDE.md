@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 # @rific/heatmap
 
-GitHub-style activity heatmap for React Native — SVG-rendered calendar grid with six cell visual modes, tooltips, and animations, plus two experimental extras (jittered scatter plot, pan/pinch-zoomable timeline).
+GitHub-style activity heatmap for React Native - SVG-rendered calendar grid with six cell visual modes, tooltips, and animations, plus two experimental extras (jittered scatter plot, pan/pinch-zoomable timeline).
 
 Part of the `@rific`/`@tastic` package ecosystem. Published at https://www.npmjs.com/package/@rific/heatmap.
 
@@ -68,11 +68,11 @@ src/
     utils/*.test.ts                 - colorUtils, dateUtils, timeUtils
 ```
 
-`EXPERIMENTAL.md` documents `Scatter`/`Timeline`: exported today but intentionally left out of `README.md` and treated as unstable (no major-bump guarantee) until promoted. It isn't part of the published npm package itself — only `dist`, `src` (minus `__tests__`/`__mocks__`), `README.md`, and `LICENSE` ship (see `package.json`'s `files` array).
+`EXPERIMENTAL.md` documents `Scatter`/`Timeline`: exported today but intentionally left out of `README.md` and treated as unstable (no major-bump guarantee) until promoted. It isn't part of the published npm package itself - only `dist`, `src` (minus `__tests__`/`__mocks__`), `README.md`, and `LICENSE` ship (see `package.json`'s `files` array).
 
 ## Public API
 
-From `src/index.ts` — a single default export, no named value exports:
+From `src/index.ts` - a single default export, no named value exports:
 
 ```ts
 import Heatmap, {
@@ -95,23 +95,23 @@ import Heatmap, {
 
 ## Peer Dependencies
 
-- `react` >=19.0.0 — required
-- `react-native` >=0.76.0 — required
-- `react-native-svg` >=15.0.0 — required (all three cell-rendering components draw with it)
+- `react` >=19.0.0 - required
+- `react-native` >=0.76.0 - required
+- `react-native-svg` >=15.0.0 - required (all three cell-rendering components draw with it)
 
 No optional peer dependencies.
 
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
-- Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` — wired in `jest.config.cjs`'s `moduleNameMapper`
+- Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
 - 182 tests across 9 suites (6 component suites + 3 util suites), all passing as of this writing
-- `jest.config.cjs` overrides `coverageThreshold` below the fleet's 70% global default (branches 55 / functions 50 / lines 53 / statements 53) — the in-file comment records the real measured coverage this was set from (2026-08-30) and why; re-measure with `npx jest --coverage` before assuming a bump is safe, since a threshold edit alone can't distinguish "genuinely relaxed" from "silently disabled"
+- `jest.config.cjs` overrides `coverageThreshold` below the fleet's 70% global default (branches 55 / functions 50 / lines 53 / statements 53) - the in-file comment records the real measured coverage this was set from (2026-08-30) and why; re-measure with `npx jest --coverage` before assuming a bump is safe, since a threshold edit alone can't distinguish "genuinely relaxed" from "silently disabled"
 - When adding new component or util behavior, add a corresponding test case
 
 ## Code Style
 
-Enforced by ESLint + Prettier — run `npm run lint` before finishing any task. `eslint.config.cjs` is a bare `require('@infinitetoken/eslint-config/react-native')` — no local overrides; `tsconfig.json` only adds `include`/`exclude` on top of `@infinitetoken/tsconfig/react-native`.
+Enforced by ESLint + Prettier - run `npm run lint` before finishing any task. `eslint.config.cjs` is a bare `require('@infinitetoken/eslint-config/react-native')` - no local overrides; `tsconfig.json` only adds `include`/`exclude` on top of `@infinitetoken/tsconfig/react-native`.
 
 **Prettier config** (`@infinitetoken/eslint-config/prettier`):
 - Single quotes, JSX single quotes
@@ -120,11 +120,11 @@ Enforced by ESLint + Prettier — run `npm run lint` before finishing any task. 
 - Print width: 1000 (effectively disabled)
 
 **ESLint rules (warnings unless noted):**
-- `simple-import-sort` — imports and exports must be sorted
+- `simple-import-sort` - imports and exports must be sorted
 - `react-native/no-inline-styles`, `react-native/no-unused-styles`
-- `no-console` — no console statements
-- `@typescript-eslint/no-unused-vars` — `varsIgnorePattern`/`argsIgnorePattern`/`caughtErrorsIgnorePattern` all `^_` (unused bindings prefixed `_` are allowed)
-- `@typescript-eslint/no-explicit-any` — off inside `__tests__/`/`__mocks__/` (still linted otherwise, just permitted `any` for fixtures/mocking)
-- `react-hooks/rules-of-hooks` — error, not a warning
+- `no-console` - no console statements
+- `@typescript-eslint/no-unused-vars` - `varsIgnorePattern`/`argsIgnorePattern`/`caughtErrorsIgnorePattern` all `^_` (unused bindings prefixed `_` are allowed)
+- `@typescript-eslint/no-explicit-any` - off inside `__tests__/`/`__mocks__/` (still linted otherwise, just permitted `any` for fixtures/mocking)
+- `react-hooks/rules-of-hooks` - error, not a warning
 - `react-hooks/exhaustive-deps`, `react-hooks/refs`, `react-hooks/immutability`, `react-hooks/preserve-manual-memoization`, `react-hooks/set-state-in-effect`
-- `package-json/order-properties`, `package-json/sort-collections` — on `package.json` itself
+- `package-json/order-properties`, `package-json/sort-collections` - on `package.json` itself

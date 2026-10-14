@@ -1,8 +1,8 @@
 # Experimental components
 
-These are exported from `@rific/heatmap` today, but intentionally left out of `README.md` — they aren't fully flushed out yet. Not part of the published/announced public API; treat as unstable and subject to change without a major version bump until they're promoted into the README.
+These are exported from `@rific/heatmap` today, but intentionally left out of `README.md` - they aren't fully flushed out yet. Not part of the published/announced public API; treat as unstable and subject to change without a major version bump until they're promoted into the README.
 
-This file isn't included in the published npm package (only files listed in `package.json`'s `files` array — plus `README.md`/`LICENSE`, which npm always includes — actually ship).
+This file isn't included in the published npm package (only files listed in `package.json`'s `files` array - plus `README.md`/`LICENSE`, which npm always includes - actually ship).
 
 ## Scatter
 
@@ -25,7 +25,7 @@ const data = [
 <Heatmap.Scatter data={data} width={320} height={160} />
 ```
 
-Each segment's `value` becomes that many dots (capped at 50 per segment), colored with the segment's `color`. Dots are placed along the x-axis by date and jittered on the y-axis — deterministically, so the layout is stable across re-renders, not a precise chart. **Points with no `segments` (or an empty array) are skipped entirely** — `Heatmap.Scatter` has nothing to plot for a bare `{ date, value }` point.
+Each segment's `value` becomes that many dots (capped at 50 per segment), colored with the segment's `color`. Dots are placed along the x-axis by date and jittered on the y-axis - deterministically, so the layout is stable across re-renders, not a precise chart. **Points with no `segments` (or an empty array) are skipped entirely** - `Heatmap.Scatter` has nothing to plot for a bare `{ date, value }` point.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
@@ -38,7 +38,7 @@ Each segment's `value` becomes that many dots (capped at 50 per segment), colore
 
 ## Timeline
 
-`Heatmap.Timeline` is a horizontally pannable, pinch-to-zoomable strip of colored cells bucketed by day, hour, or minute — the bucket granularity switches automatically based on zoom level, so zooming in on a day reveals its hours, and zooming into an hour reveals its minutes.
+`Heatmap.Timeline` is a horizontally pannable, pinch-to-zoomable strip of colored cells bucketed by day, hour, or minute - the bucket granularity switches automatically based on zoom level, so zooming in on a day reveals its hours, and zooming into an hour reveals its minutes.
 
 ```tsx
 import Heatmap from '@rific/heatmap'
@@ -65,12 +65,12 @@ Pan (drag) and pinch-to-zoom are built in, with momentum scrolling on release. T
 | `zoom` | `number` | `20` | Pixels per hour. Higher zooms in. Clamped between `minZoom` and `maxZoom`, and adjustable by the user via pinch. |
 | `minZoom` | `number` | `0.5` | Minimum zoom reachable by pinch-out. |
 | `maxZoom` | `number` | `2000` | Maximum zoom reachable by pinch-in. |
-| `color` | `string` | — | Single accent color. Overrides the default color scale, same as `Heatmap.Calendar`. |
+| `color` | `string` | - | Single accent color. Overrides the default color scale, same as `Heatmap.Calendar`. |
 | `colorScale` | `Partial<ColorScale>` | auto | Thresholds and colors used to shade cells. |
-| `colorScheme` | `'light' \| 'dark'` | — | Switch between built-in light and dark palettes. |
+| `colorScheme` | `'light' \| 'dark'` | - | Switch between built-in light and dark palettes. |
 | `theme` | `Partial<TimelineTheme>` | `{ height: 60, labelHeight: 20, backgroundColor: 'transparent', labelColor: '#57606a', emptyColor: '#ebedf0' }` | Overrides merge onto the default (dark `colorScheme` swaps `labelColor`/`emptyColor` defaults). |
-| `onZoomChange` | `(zoom: number) => void` | — | Called after a pinch gesture changes the zoom level. |
-| `onTimePress` | `(bucket: TimeBucket) => void` | — | Called on tap (not drag) with `{ startTime, endTime, granularity, value }` for the tapped bucket. |
+| `onZoomChange` | `(zoom: number) => void` | - | Called after a pinch gesture changes the zoom level. |
+| `onTimePress` | `(bucket: TimeBucket) => void` | - | Called on tap (not drag) with `{ startTime, endTime, granularity, value }` for the tapped bucket. |
 
 ## TypeScript
 

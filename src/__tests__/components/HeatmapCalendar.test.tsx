@@ -242,11 +242,11 @@ describe('Heatmap.Calendar', () => {
     // with native click semantics, and the cell is a DOM descendant of the outer
     // TouchableWithoutFeedback. A click on a cell therefore always bubbles up and also fires
     // dismissTooltip within the same event/batch, resetting the tooltip to null right after it
-    // is set — unlike real React Native, where a touch claimed by a nested Pressable would not
+    // is set - unlike real React Native, where a touch claimed by a nested Pressable would not
     // also reach the ancestor TouchableWithoutFeedback's onPress. This makes the tooltip never
     // observably non-null in the DOM after a click, and means the `prev?.date === date` (close
     // an already-open tooltip for the same date) branch of the ternary on line 51 can't be
-    // driven true via simulated clicks — going into every click, `prev` is always null. These
+    // driven true via simulated clicks - going into every click, `prev` is always null. These
     // tests cover what's actually reachable: onDayPress firing with the right args on repeated
     // and differing clicks, independent of the (unobservable here) tooltip open/close state.
     it('calls onDayPress on every click, independent of tooltip open/dismiss state', async () => {

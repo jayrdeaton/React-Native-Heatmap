@@ -167,7 +167,7 @@ describe('Heatmap.Timeline', () => {
 
     it('pan-drag beyond the tap threshold starts momentum instead of calling onTimePress', () => {
       // Invokes the rAF callback synchronously exactly once (the momentum loop's first
-      // frame) so startMomentum's animate() body runs for real, then stops recursing —
+      // frame) so startMomentum's animate() body runs for real, then stops recursing -
       // any frame it schedules from inside itself just gets a fake id, never a callback.
       let rafCalls = 0
       jest.spyOn(global, 'requestAnimationFrame').mockImplementation(((cb: FrameRequestCallback) => {

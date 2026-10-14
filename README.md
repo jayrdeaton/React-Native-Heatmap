@@ -46,19 +46,19 @@ export default function App() {
 | `endDate` | `Date` | Today | Last day shown on the grid. |
 | `cellMode` | `'solid' \| 'gradient' \| 'density' \| 'stacked' \| 'dots' \| 'priority'` | `'solid'` | Visual style of each cell. |
 | `colorScale` | `Partial<ColorScale>` | GitHub greens | Thresholds and colors used to shade cells. |
-| `color` | `string` | — | Single accent color. Overrides the default color scale. |
-| `colorScheme` | `'light' \| 'dark'` | — | Switch between built-in light and dark palettes. |
+| `color` | `string` | - | Single accent color. Overrides the default color scale. |
+| `colorScheme` | `'light' \| 'dark'` | - | Switch between built-in light and dark palettes. |
 | `autoScale` | `boolean` | `true` | Scale cell intensity relative to the max value in `data`. |
 | `theme` | `Partial<HeatmapTheme>` | See below | Size, spacing, and color overrides. |
 | `showMonthLabels` | `boolean` | `true` | Show month name labels above the grid. |
 | `showDayLabels` | `boolean` | `true` | Show Mon / Wed / Fri labels on the left. |
 | `animated` | `boolean` | `false` | Enable all animations (load ripple, today pulse, press spring). |
 | `scrollEnabled` | `boolean` | `true` | Enable or disable horizontal scrolling. |
-| `onDayPress` | `(point: DataPoint \| null, date: string) => void` | — | Called when a cell is tapped. |
-| `onEndReached` | `() => void` | — | Called when the user scrolls near the right edge. Use for infinite scroll. |
+| `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a cell is tapped. |
+| `onEndReached` | `() => void` | - | Called when the user scrolls near the right edge. Use for infinite scroll. |
 | `onEndReachedThreshold` | `number` | `0.1` | Fraction of total width from the right edge that triggers `onEndReached`. |
-| `renderTooltip` | `(data: TooltipData) => ReactNode` | — | Replace the default tooltip with a custom component. |
-| `renderCell` | `(data: DataPoint \| null, date: string) => ReactNode` | — | Replace the default cell with a custom component. |
+| `renderTooltip` | `(data: TooltipData) => ReactNode` | - | Replace the default tooltip with a custom component. |
+| `renderCell` | `(data: DataPoint \| null, date: string) => ReactNode` | - | Replace the default cell with a custom component. |
 | `tooltipLabel` | `string` | `'event'` | Unit label in the default tooltip. Pluralized automatically (e.g. `'workout'` → `'3 workouts'`). |
 | `tooltipEmptyLabel` | `string` | `'No events'` | Label shown in the tooltip for days with no data. |
 
@@ -68,7 +68,7 @@ export default function App() {
 Each cell is a flat colored rectangle, identical to the GitHub contribution graph.
 
 ### `gradient`
-A radial gradient blooms from the center of each cell — dim at the center, full color at the edges.
+A radial gradient blooms from the center of each cell - dim at the center, full color at the edges.
 
 ### `density`
 A circle grows inside a neutral background rectangle. A small dot means low activity; a filled square means high activity.
@@ -88,15 +88,15 @@ The dominant segment's color fills the cell at an opacity proportional to its va
 
 ## Animations
 
-Pass `animated` to enable all animations. No extra dependencies — uses the built-in `Animated` API.
+Pass `animated` to enable all animations. No extra dependencies - uses the built-in `Animated` API.
 
 ```tsx
 <Heatmap.Calendar data={data} animated />
 ```
 
-- **Load ripple** — cells fade and scale in on mount, radiating outward from today's column.
-- **Today pulse** — the current day cell breathes with a looping scale animation.
-- **Press spring** — cells scale down on press and spring back on release.
+- **Load ripple**: cells fade and scale in on mount, radiating outward from today's column.
+- **Today pulse**: the current day cell breathes with a looping scale animation.
+- **Press spring**: cells scale down on press and spring back on release.
 
 The current day always receives a border indicator regardless of the `animated` prop.
 
@@ -175,7 +175,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
   data={data}
   renderTooltip={({ date, value }) => (
     <View style={styles.tooltip}>
-      <Text>{date} — {value} events</Text>
+      <Text>{date} - {value} events</Text>
     </View>
   )}
 />
