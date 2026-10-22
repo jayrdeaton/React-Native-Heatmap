@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
@@ -182,6 +182,76 @@ describe('Heatmap.Calendar', () => {
     expect(() => {
       render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayBorderColor: 'blue' }} />)
     }).not.toThrow()
+  })
+
+  // The grid waits for the first idle moment: requestIdleCallback where the runtime has it
+  // (React Native, Chrome), a zero-delay timeout where it doesn't (Safari on web).
+  describe('deferred grid render', () => {
+    const CELL_LABEL = '2026-01-15: 3 events'
+    const originalRequestIdleCallback = globalThis.requestIdleCallback
+    const originalCancelIdleCallback = globalThis.cancelIdleCallback
+
+    function removeIdleCallbacks() {
+      delete (globalThis as { requestIdleCallback?: unknown }).requestIdleCallback
+      delete (globalThis as { cancelIdleCallback?: unknown }).cancelIdleCallback
+    }
+
+    // Unmounts first (RTL's own cleanup runs after this hook) so the effect's cleanup still
+    // sees the stubs. jsdom has no idle callbacks today, so this usually just removes them.
+    afterEach(() => {
+      cleanup()
+      removeIdleCallbacks()
+      if (typeof originalRequestIdleCallback === 'function') Object.assign(globalThis, { requestIdleCallback: originalRequestIdleCallback, cancelIdleCallback: originalCancelIdleCallback })
+      jest.useRealTimers()
+    })
+
+    describe('with requestIdleCallback', () => {
+      let idleCallback: IdleRequestCallback | undefined
+
+      beforeEach(() => {
+        idleCallback = undefined
+        globalThis.requestIdleCallback = jest.fn((callback: IdleRequestCallback) => {
+          idleCallback = callback
+          return 7
+        })
+        globalThis.cancelIdleCallback = jest.fn()
+      })
+
+      it('draws no cells until the idle callback fires', () => {
+        render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+        expect(globalThis.requestIdleCallback).toHaveBeenCalledTimes(1)
+        expect(screen.queryByLabelText(CELL_LABEL)).toBeNull()
+        act(() => idleCallback?.({ didTimeout: false, timeRemaining: () => 50 }))
+        expect(screen.getByLabelText(CELL_LABEL)).toBeTruthy()
+      })
+
+      it('cancels the pending idle callback on unmount', () => {
+        const { unmount } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+        unmount()
+        expect(globalThis.cancelIdleCallback).toHaveBeenCalledWith(7)
+      })
+    })
+
+    describe('without requestIdleCallback', () => {
+      beforeEach(() => {
+        removeIdleCallbacks()
+        jest.useFakeTimers()
+      })
+
+      it('draws no cells until a zero-delay timeout fires', () => {
+        render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+        expect(screen.queryByLabelText(CELL_LABEL)).toBeNull()
+        act(() => jest.advanceTimersByTime(0))
+        expect(screen.getByLabelText(CELL_LABEL)).toBeTruthy()
+      })
+
+      it('clears the pending timeout on unmount', () => {
+        const { unmount } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)
+        expect(jest.getTimerCount()).toBe(1)
+        unmount()
+        expect(jest.getTimerCount()).toBe(0)
+      })
+    })
   })
 
   describe('handleScroll', () => {

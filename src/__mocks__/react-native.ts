@@ -14,13 +14,6 @@ const View = ({ children, onLayout }: { children?: React.ReactNode; onLayout?: (
   return children ?? null
 }
 
-const InteractionManager = {
-  runAfterInteractions: (callback: () => void) => {
-    callback()
-    return { cancel: () => {} }
-  }
-}
-
 const noop = () => {}
 const animatedObj = {
   start: (cb?: () => void) => {
@@ -121,7 +114,7 @@ const ScrollView = ({ children, onScroll }: { children?: React.ReactNode; onScro
     children
   )
 
-export { Animated, Easing, InteractionManager, PanResponder, Pressable, ScrollView, StyleSheet, TouchableWithoutFeedback, View }
+export { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, TouchableWithoutFeedback, View }
 
 export const Text = stub
 export const TouchableOpacity = stub

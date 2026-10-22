@@ -2,6 +2,8 @@
 
 GitHub-style activity heatmap for React Native. SVG cells with multiple visualization modes, touch tooltips, animations, and a flexible color scale API.
 
+**[Overview](https://rific.jaydeaton.com/packages/heatmap)**: an info page in the Expo Starter showcase, since this is an optional package with no runnable demo there.
+
 ## Installation
 
 ```sh

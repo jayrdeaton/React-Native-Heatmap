@@ -45,7 +45,8 @@ src/
   constants/
     index.ts                      - month/day label arrays, default light/dark accent colors, default light/dark HeatmapTheme objects
   components/
-    HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, tooltip state, month/day labels
+    HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, tooltip state, month/day labels;
+                                     draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing)
     HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority),
                                      press/pulse/data-fade animations via RN's built-in Animated API
     WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state
@@ -59,13 +60,15 @@ src/
     colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging
     dateUtils.ts                   - date string parse/format, week-grid building, month-label placement, default 1-year date range
     timeUtils.ts                   - zoom<->granularity math, time bucketing, time-label formatting for .Timeline
+    layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
+                                     rows, month labels, each cell's own margins)
   __mocks__/
     react-native.ts                - jest mock: View fires onLayout once; Pressable/TouchableWithoutFeedback/ScrollView render as real
-                                     clickable/scrollable divs; Animated/Easing/StyleSheet/PanResponder/InteractionManager/Platform stubs
+                                     clickable/scrollable divs; Animated/Easing/StyleSheet/PanResponder/Platform stubs
     react-native-svg.ts             - jest mock: every SVG primitive stubbed to a passthrough or null
   __tests__/
     components/*.test.tsx          - HeatmapCalendar, HeatmapCell, HeatmapScatter, HeatmapTimeline, Tooltip, WeekColumn
-    utils/*.test.ts                 - colorUtils, dateUtils, timeUtils
+    utils/*.test.ts                 - colorUtils, dateUtils, timeUtils, layoutUtils
 ```
 
 `EXPERIMENTAL.md` documents `Scatter`/`Timeline`: exported today but intentionally left out of `README.md` and treated as unstable (no major-bump guarantee) until promoted. It isn't part of the published npm package itself - only `dist`, `src` (minus `__tests__`/`__mocks__`), `README.md`, and `LICENSE` ship (see `package.json`'s `files` array).
@@ -105,8 +108,10 @@ No optional peer dependencies.
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 182 tests across 9 suites (6 component suites + 3 util suites), all passing as of this writing
-- `jest.config.cjs` overrides `coverageThreshold` below the fleet's 70% global default (branches 55 / functions 50 / lines 53 / statements 53) - the in-file comment records the real measured coverage this was set from (2026-08-30) and why; re-measure with `npx jest --coverage` before assuming a bump is safe, since a threshold edit alone can't distinguish "genuinely relaxed" from "silently disabled"
+- 189 tests across 10 suites (6 component suites + 4 util suites), all passing as of this writing
+- Every part of `.Calendar` that lines up with the cells steps by `cellPitch` (utils/layoutUtils.ts). Until 2026-10-22 each used `cellSize + gutterSize` while a cell also took `cellPadding` on every side, so with the default theme the grid cut most of Saturday's row off, the day labels slid 2pt a row off their cells and the month labels 4pt a week. The component tests' `react-native` mock renders no styles, so this is pinned by layoutUtils.test.ts; it was checked by eye in Solitaire's web build
+- Coverage is collected on every run and held to the fleet's 70% global `coverageThreshold` from `@infinitetoken/jest-config` (no local override in `jest.config.cjs`); real coverage sits far above it (about 99% statements, 96% branches)
+- Don't use React Native APIs that 0.88 removed: `InteractionManager` throws an invariant on access in dev and is undefined in production (react-native-web still exports it, so web alone won't catch it). Defer work with the `requestIdleCallback` global instead; jsdom has none, so tests stub it on `globalThis` to cover that path
 - When adding new component or util behavior, add a corresponding test case
 
 ## Code Style

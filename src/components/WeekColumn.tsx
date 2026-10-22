@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native'
 import type { CellMode, ColorScale, DataPoint, HeatmapTheme } from '../types'
 import { getAutoScaleColor, getColorForValue, getNormalizedValue } from '../utils/colorUtils'
 import { getTodayString } from '../utils/dateUtils'
+import { cellPitch } from '../utils/layoutUtils'
 import { HeatmapCell } from './HeatmapCell'
 
 interface WeekColumnProps {
@@ -28,15 +29,16 @@ const todayString = getTodayString()
 
 function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration, selectedDate }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize, todayBorderColor, selectedBorderColor } = theme
+  const pitch = cellPitch(cellSize, gutterSize)
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
   const step = animationDuration * 0.1
   const dataFadeDelay = animationDirection === 'rtl' ? (totalColumns - 1 - columnIndex) * step : columnIndex * step
 
   return (
-    <View style={[styles.column, { marginRight: gutterSize }]}>
+    <View style={styles.column}>
       {week.map((date, i) => {
         if (!date) {
-          return <View key={i} style={{ width: cellSize, height: cellSize, marginBottom: gutterSize }} />
+          return <View key={i} style={{ width: pitch, height: pitch }} />
         }
 
         const point = dataMap.get(date)

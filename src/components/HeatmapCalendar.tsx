@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { InteractionManager, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
+import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildWeekGrid, getDefaultDateRange, getMonthLabels } from '../utils/dateUtils'
+import { cellPitch } from '../utils/layoutUtils'
 import { DayLabels } from './DayLabels'
 import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
@@ -13,9 +14,16 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
   const [ready, setReady] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
+  // Draws the grid after the first idle moment so mounting stays cheap. requestIdleCallback
+  // replaces InteractionManager (removed from React Native 0.88); Safari on web doesn't ship
+  // it, so a zero-delay timeout stands in there.
   useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => setReady(true))
-    return () => handle.cancel()
+    if (typeof requestIdleCallback === 'function') {
+      const handle = requestIdleCallback(() => setReady(true))
+      return () => cancelIdleCallback(handle)
+    }
+    const handle = setTimeout(() => setReady(true), 0)
+    return () => clearTimeout(handle)
   }, [])
 
   const { startDate, endDate } = useMemo(() => {
@@ -58,7 +66,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     setTooltip(null)
   }, [])
 
-  const gridHeight = 7 * theme.cellSize + 6 * theme.gutterSize + (showMonthLabels ? theme.monthLabelHeight : 0)
+  const gridHeight = 7 * cellPitch(theme.cellSize, theme.gutterSize) + (showMonthLabels ? theme.monthLabelHeight : 0)
 
   return (
     <TouchableWithoutFeedback onPress={dismissTooltip}>

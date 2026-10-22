@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 import type { CellMode, DataPoint, Segment } from '../types'
+import { cellPadding, cellPitch } from '../utils/layoutUtils'
 
 interface HeatmapCellProps {
   date: string
@@ -94,7 +95,9 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const effectiveTotal = weightedSegments ? weightedSegments.reduce((acc, s) => acc + s.effectiveValue, 0) : 0
   const dominantSegment = weightedSegments ? weightedSegments.reduce((prev, cur) => (cur.effectiveValue > prev.effectiveValue ? cur : prev)) : null
 
-  const cellPad = Math.ceil(size * 0.12)
+  const cellPad = cellPadding(size)
+  // The rest of the pitch past the padding (see cellPitch), so a cell takes exactly one pitch each way.
+  const extra = cellPitch(size, gutter) - size - 2 * cellPad
   const borderInset = 1
   const borderWidth = 1.5
 
@@ -176,8 +179,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   )
 
   return (
-    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button' style={{ padding: cellPad }}>
-      <Animated.View style={[{ marginBottom: Math.max(0, gutter - cellPad * 2) }, { transform }]}>
+    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button' style={{ padding: cellPad, marginRight: extra, marginBottom: extra }}>
+      <Animated.View style={{ transform }}>
         {renderCell ? (
           renderCell(dataPoint ?? null, date)
         ) : isAnimated ? (
