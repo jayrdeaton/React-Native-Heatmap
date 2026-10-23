@@ -308,17 +308,7 @@ describe('Heatmap.Calendar', () => {
       expect(onDayPress).toHaveBeenCalledWith(null, '2026-01-16')
     })
 
-    // NOTE: the mock TouchableWithoutFeedback and Pressable both render as real DOM elements
-    // with native click semantics, and the cell is a DOM descendant of the outer
-    // TouchableWithoutFeedback. A click on a cell therefore always bubbles up and also fires
-    // dismissTooltip within the same event/batch, resetting the tooltip to null right after it
-    // is set - unlike real React Native, where a touch claimed by a nested Pressable would not
-    // also reach the ancestor TouchableWithoutFeedback's onPress. This makes the tooltip never
-    // observably non-null in the DOM after a click, and means the `prev?.date === date` (close
-    // an already-open tooltip for the same date) branch of the ternary on line 51 can't be
-    // driven true via simulated clicks - going into every click, `prev` is always null. These
-    // tests cover what's actually reachable: onDayPress firing with the right args on repeated
-    // and differing clicks, independent of the (unobservable here) tooltip open/close state.
+    // A cell's press stops at its Pressable (as in React Native), so a tap selects the day and a second tap on it clears it
     it('calls onDayPress on every click, independent of tooltip open/dismiss state', async () => {
       const onDayPress = jest.fn()
       render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onDayPress={onDayPress} />)
@@ -339,6 +329,38 @@ describe('Heatmap.Calendar', () => {
       fireEvent.click(secondCell)
       expect(onDayPress).toHaveBeenNthCalledWith(1, expect.objectContaining({ date: '2026-01-15', value: 3 }), '2026-01-15')
       expect(onDayPress).toHaveBeenNthCalledWith(2, expect.objectContaining({ date: '2026-02-20', value: 12 }), '2026-02-20')
+    })
+  })
+
+  describe('onSelectionChange', () => {
+    it('reports a tapped day, and null when a second tap clears it', async () => {
+      const onSelectionChange = jest.fn()
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onSelectionChange={onSelectionChange} />)
+      const cell = await screen.findByLabelText('2026-01-15: 3 events')
+      fireEvent.click(cell)
+      expect(onSelectionChange).toHaveBeenLastCalledWith('2026-01-15')
+      fireEvent.click(cell)
+      expect(onSelectionChange).toHaveBeenLastCalledWith(null)
+      expect(onSelectionChange).toHaveBeenCalledTimes(2)
+    })
+
+    it('reports null when a tap elsewhere on the calendar dismisses the selection', async () => {
+      const onSelectionChange = jest.fn()
+      const { getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onSelectionChange={onSelectionChange} />)
+      fireEvent.click(await screen.findByLabelText('2026-01-15: 3 events'))
+      fireEvent.click(getByTestId('mock-touchable-without-feedback'))
+      expect(onSelectionChange).toHaveBeenLastCalledWith(null)
+    })
+
+    it('reports each new day, and says nothing until the selection changes', async () => {
+      const onSelectionChange = jest.fn()
+      const { getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} onSelectionChange={onSelectionChange} />)
+      await screen.findByLabelText('2026-01-15: 3 events')
+      fireEvent.click(getByTestId('mock-touchable-without-feedback'))
+      expect(onSelectionChange).not.toHaveBeenCalled()
+      fireEvent.click(await screen.findByLabelText('2026-01-15: 3 events'))
+      fireEvent.click(await screen.findByLabelText('2026-02-20: 12 events'))
+      expect(onSelectionChange.mock.calls).toEqual([['2026-01-15'], ['2026-02-20']])
     })
   })
 

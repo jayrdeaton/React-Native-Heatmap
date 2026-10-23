@@ -67,7 +67,8 @@ type PressableProps = {
 
 // Renders a real clickable div (accessibilityLabel -> aria-label) instead of discarding
 // props, so tests can fire onPress/onPressIn/onPressOut via fireEvent.click/mouseDown/mouseUp
-// and query individual cells with getByLabelText.
+// and query individual cells with getByLabelText. A press stops there, as a touch a Pressable
+// claims does in React Native, rather than also reaching a TouchableWithoutFeedback around it.
 const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessibilityLabel, accessibilityRole }: PressableProps) =>
   React.createElement(
     'div',
@@ -75,7 +76,12 @@ const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessi
       role: accessibilityRole,
       'aria-label': accessibilityLabel,
       'aria-disabled': disabled || undefined,
-      onClick: disabled ? undefined : onPress,
+      onClick: disabled
+        ? undefined
+        : (event: { stopPropagation: () => void }) => {
+            event.stopPropagation()
+            onPress?.()
+          },
       onMouseDown: disabled ? undefined : onPressIn,
       onMouseUp: disabled ? undefined : onPressOut
     },

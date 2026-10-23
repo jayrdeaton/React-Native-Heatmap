@@ -105,6 +105,9 @@ export interface HeatmapProps {
   showMonthLabels?: boolean
   showDayLabels?: boolean
   onDayPress?: (day: DataPoint | null, date: string) => void
+  /** The selected day (outlined, its tooltip open) whenever it changes, or null once it clears: a second tap on it, or a
+   * tap elsewhere on the calendar. onDayPress only reports taps, so a host showing something for the selected day needs this. */
+  onSelectionChange?: (date: string | null) => void
   renderTooltip?: (data: TooltipData) => React.ReactNode
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean

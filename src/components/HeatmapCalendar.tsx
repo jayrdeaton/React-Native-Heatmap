@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
@@ -10,7 +10,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [ready, setReady] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
@@ -66,6 +66,16 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     setTooltip(null)
   }, [])
 
+  // Reported from the state itself, so every way the selection changes (a tap, a second tap, a tap elsewhere) is
+  // told once, and a host passing a new callback each render isn't told again
+  const selectedDate = tooltip?.date ?? null
+  const reportedDateRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (selectedDate === reportedDateRef.current) return
+    reportedDateRef.current = selectedDate
+    onSelectionChange?.(selectedDate)
+  }, [selectedDate, onSelectionChange])
+
   const gridHeight = 7 * cellPitch(theme.cellSize, theme.gutterSize) + (showMonthLabels ? theme.monthLabelHeight : 0)
 
   return (
@@ -77,7 +87,7 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
           <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
             <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
               {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={tooltip?.date ?? null} />)}</View>
+              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={selectedDate} />)}</View>
             </View>
           </ScrollView>
 
