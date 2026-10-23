@@ -1,4 +1,5 @@
 import type React from 'react'
+import type { StyleProp, TextStyle } from 'react-native'
 
 export interface Segment {
   color: string
@@ -118,4 +119,30 @@ export interface HeatmapProps {
   tooltipLabel?: string
   tooltipEmptyLabel?: string
   scrollEnabled?: boolean
+}
+
+export interface MonthProps {
+  data: DataPoint[]
+  /** The month shown, YYYY-MM. */
+  month: string
+  /** Called with the month an arrow moves to (YYYY-MM). Without it the header has no arrows. */
+  onMonthChange?: (month: string) => void
+  /** The first day that can be pressed (YYYY-MM-DD). Days before it are dimmed, and the previous arrow stops at its month. */
+  minDate?: string
+  /** The last day that can be pressed (YYYY-MM-DD). Days after it are dimmed, and the next arrow stops at its month. */
+  maxDate?: string
+  /** The day outlined in the theme's selectedBorderColor (YYYY-MM-DD). */
+  selectedDate?: string | null
+  onDayPress?: (day: DataPoint | null, date: string) => void
+  /** The weekday each row starts on, 0 for Sunday through 6 for Saturday. */
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  color?: string
+  colorScale?: Partial<ColorScale>
+  colorScheme?: 'light' | 'dark'
+  theme?: Partial<HeatmapTheme>
+  autoScale?: boolean
+  /** The unit in each day's accessibility label, pluralized with an s: 'log' reads '3 logs'. */
+  valueLabel?: string
+  /** Applied to every text (title, weekdays, dates) under the month's own colors, for a font family or size. */
+  textStyle?: StyleProp<TextStyle>
 }

@@ -1,5 +1,5 @@
 import type { ColorScale, DataPoint } from '../../types'
-import { buildDataMap, defaultColorScale, defaultTheme, getColorForValue, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
+import { buildDataMap, defaultColorScale, defaultTheme, getColorForValue, getContrastTextColor, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
 
 describe('defaultColorScale', () => {
   it('has 4 thresholds and 5 colors', () => {
@@ -159,5 +159,34 @@ describe('mergeTheme', () => {
     const merged = mergeTheme({ cellSize: 20 })
     expect(merged.cellSize).toBe(20)
     expect(merged.gutterSize).toBe(defaultTheme.gutterSize)
+  })
+})
+
+describe('getContrastTextColor', () => {
+  it('picks near-black on light backgrounds and near-white on dark ones', () => {
+    expect(getContrastTextColor('#ffffff')).toBe('#0f0f0f')
+    expect(getContrastTextColor('#ebedf0')).toBe('#0f0f0f')
+    expect(getContrastTextColor('#000000')).toBe('#f0f0f0')
+    expect(getContrastTextColor('#0d1117')).toBe('#f0f0f0')
+  })
+
+  it('weighs channels by how bright they look, not by their sum', () => {
+    // Tailwind blue-500 and green-500 read better with dark text, blue-900 and red-700 with light
+    expect(getContrastTextColor('#3b82f6')).toBe('#0f0f0f')
+    expect(getContrastTextColor('#22c55e')).toBe('#0f0f0f')
+    expect(getContrastTextColor('#1e3a8a')).toBe('#f0f0f0')
+    expect(getContrastTextColor('#b91c1c')).toBe('#f0f0f0')
+  })
+
+  it('reads 3 digit hex', () => {
+    expect(getContrastTextColor('#fff')).toBe('#0f0f0f')
+    expect(getContrastTextColor('#000')).toBe('#f0f0f0')
+  })
+
+  it("falls back to the colorScheme's text for a background it can't read", () => {
+    expect(getContrastTextColor('transparent')).toBe('#0f0f0f')
+    expect(getContrastTextColor('transparent', 'light')).toBe('#0f0f0f')
+    expect(getContrastTextColor('transparent', 'dark')).toBe('#f0f0f0')
+    expect(getContrastTextColor('rgba(0, 0, 0, 0.5)', 'dark')).toBe('#f0f0f0')
   })
 })

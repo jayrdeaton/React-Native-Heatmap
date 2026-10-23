@@ -63,19 +63,21 @@ type PressableProps = {
   disabled?: boolean
   accessibilityLabel?: string
   accessibilityRole?: string
+  accessibilityState?: { selected?: boolean }
 }
 
-// Renders a real clickable div (accessibilityLabel -> aria-label) instead of discarding
-// props, so tests can fire onPress/onPressIn/onPressOut via fireEvent.click/mouseDown/mouseUp
-// and query individual cells with getByLabelText. A press stops there, as a touch a Pressable
+// Renders a real clickable div (accessibilityLabel -> aria-label, accessibilityState.selected ->
+// aria-selected) instead of discarding props, so tests can fire onPress/onPressIn/onPressOut via
+// fireEvent.click/mouseDown/mouseUp and query individual cells with getByLabelText. A press stops there, as a touch a Pressable
 // claims does in React Native, rather than also reaching a TouchableWithoutFeedback around it.
-const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessibilityLabel, accessibilityRole }: PressableProps) =>
+const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessibilityLabel, accessibilityRole, accessibilityState }: PressableProps) =>
   React.createElement(
     'div',
     {
       role: accessibilityRole,
       'aria-label': accessibilityLabel,
       'aria-disabled': disabled || undefined,
+      'aria-selected': accessibilityState?.selected || undefined,
       onClick: disabled
         ? undefined
         : (event: { stopPropagation: () => void }) => {

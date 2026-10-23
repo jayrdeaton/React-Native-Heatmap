@@ -6,6 +6,8 @@ export const fullMonthNames = ['January', 'February', 'March', 'April', 'May', '
 
 export const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
+export const weekdayInitials = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
 export const defaultLightColor = '#4183c4'
 export const defaultDarkColor = '#58a6ff'
 

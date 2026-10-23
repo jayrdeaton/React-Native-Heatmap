@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 # @rific/heatmap
 
-GitHub-style activity heatmap for React Native - SVG-rendered calendar grid with six cell visual modes, tooltips, and animations, plus two experimental extras (jittered scatter plot, pan/pinch-zoomable timeline).
+GitHub-style activity heatmap for React Native - SVG-rendered calendar grid with six cell visual modes, tooltips, and animations, a month calendar of dates on the same color scale, plus two experimental extras (jittered scatter plot, pan/pinch-zoomable timeline).
 
 Part of the `@rific`/`@tastic` package ecosystem. Published at https://www.npmjs.com/package/@rific/heatmap.
 
@@ -39,11 +39,11 @@ npm run release:patch   # npm version patch && npm run release (or release:minor
 
 ```
 src/
-  index.ts                        - public exports: default `Heatmap` object (.Calendar/.Scatter/.Timeline) + type-only exports
-  types.ts                        - every prop/data type: DataPoint, Segment, ColorScale, HeatmapTheme, HeatmapProps, ScatterProps,
+  index.ts                        - public exports: default `Heatmap` object (.Calendar/.Month/.Scatter/.Timeline) + type-only exports
+  types.ts                        - every prop/data type: DataPoint, Segment, ColorScale, HeatmapTheme, HeatmapProps, MonthProps, ScatterProps,
                                      TimelineDataPoint, TimeBucket, TimelineTheme, TimelineProps, TooltipData, CellMode, TimelineGranularity
   constants/
-    index.ts                      - month/day label arrays, default light/dark accent colors, default light/dark HeatmapTheme objects
+    index.ts                      - month/day label arrays, weekday initials, default light/dark accent colors, default light/dark HeatmapTheme objects
   components/
     HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, tooltip state, month/day labels;
                                      draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing)
@@ -53,21 +53,26 @@ src/
     DayLabels.tsx                  - Mon/Wed/Fri row labels
     MonthLabels.tsx                - month-name labels positioned by week index
     Tooltip.tsx                    - floating tooltip above a pressed cell, or the caller's renderTooltip
+    HeatmapMonth.tsx               - public .Month: one month as six weeks of dates (plain Views and Pressables, no SVG), each day
+                                     on its color from .Calendar's scale, date text by contrast; controlled month, arrows bounded
+                                     by minDate/maxDate, selectedDate outlined, weekStartsOn
     HeatmapScatter.tsx             - public .Scatter (experimental, see EXPERIMENTAL.md): deterministic jittered dot swarm from segments
     HeatmapTimeline.tsx            - public .Timeline (experimental, see EXPERIMENTAL.md): pan/pinch-zoomable bucketed strip,
                                      hand-rolled PanResponder built once in a run-once layout effect (see in-file comments on why)
   utils/
-    colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging
-    dateUtils.ts                   - date string parse/format, week-grid building, month-label placement, default 1-year date range
+    colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging,
+                                     near-black/near-white text by WCAG contrast (getContrastTextColor)
+    dateUtils.ts                   - date string parse/format, week-grid building, month-label placement, default 1-year date range,
+                                     .Month's six-week month grid, month shifting and titles
     timeUtils.ts                   - zoom<->granularity math, time bucketing, time-label formatting for .Timeline
     layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
                                      rows, month labels, each cell's own margins)
   __mocks__/
     react-native.ts                - jest mock: View fires onLayout once; Pressable/TouchableWithoutFeedback/ScrollView render as real
-                                     clickable/scrollable divs; Animated/Easing/StyleSheet/PanResponder/Platform stubs
+                                     clickable/scrollable divs (Pressable's accessibilityState.selected as aria-selected); Animated/Easing/StyleSheet/PanResponder/Platform stubs
     react-native-svg.ts             - jest mock: every SVG primitive stubbed to a passthrough or null
   __tests__/
-    components/*.test.tsx          - HeatmapCalendar, HeatmapCell, HeatmapScatter, HeatmapTimeline, Tooltip, WeekColumn
+    components/*.test.tsx          - HeatmapCalendar, HeatmapCell, HeatmapMonth, HeatmapScatter, HeatmapTimeline, Tooltip, WeekColumn
     utils/*.test.ts                 - colorUtils, dateUtils, timeUtils, layoutUtils
 ```
 
@@ -84,6 +89,7 @@ import Heatmap, {
   type DataPoint,
   type HeatmapProps,
   type HeatmapTheme,
+  type MonthProps,
   type ScatterProps,
   type TimeBucket,
   type TimelineDataPoint,
@@ -94,13 +100,13 @@ import Heatmap, {
 } from '@rific/heatmap'
 ```
 
-`Heatmap` is `{ Calendar: HeatmapCalendar, Scatter: HeatmapScatter, Timeline: HeatmapTimeline }`.
+`Heatmap` is `{ Calendar: HeatmapCalendar, Month: HeatmapMonth, Scatter: HeatmapScatter, Timeline: HeatmapTimeline }`.
 
 ## Peer Dependencies
 
 - `react` >=19.0.0 - required
 - `react-native` >=0.76.0 - required
-- `react-native-svg` >=15.0.0 - required (all three cell-rendering components draw with it)
+- `react-native-svg` >=15.0.0 - required (`.Calendar`, `.Scatter` and `.Timeline` draw with it; `.Month` is plain views)
 
 No optional peer dependencies.
 
@@ -108,7 +114,8 @@ No optional peer dependencies.
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 189 tests across 10 suites (6 component suites + 4 util suites), all passing as of this writing
+- 222 tests across 11 suites (7 component suites + 4 util suites), all passing as of this writing
+- `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - Every part of `.Calendar` that lines up with the cells steps by `cellPitch` (utils/layoutUtils.ts). Until 2026-10-22 each used `cellSize + gutterSize` while a cell also took `cellPadding` on every side, so with the default theme the grid cut most of Saturday's row off, the day labels slid 2pt a row off their cells and the month labels 4pt a week. The component tests' `react-native` mock renders no styles, so this is pinned by layoutUtils.test.ts; it was checked by eye in Solitaire's web build
 - Coverage is collected on every run and held to the fleet's 70% global `coverageThreshold` from `@infinitetoken/jest-config` (no local override in `jest.config.cjs`); real coverage sits far above it (about 99% statements, 96% branches)
 - Don't use React Native APIs that 0.88 removed: `InteractionManager` throws an invariant on access in dev and is undefined in production (react-native-web still exports it, so web alone won't catch it). Defer work with the `requestIdleCallback` global instead; jsdom has none, so tests stub it on `globalThis` to cover that path

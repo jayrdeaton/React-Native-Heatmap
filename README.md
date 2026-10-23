@@ -195,6 +195,51 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 />
 ```
 
+## Month
+
+`Heatmap.Month` draws one month as a calendar of dates, each day on its color from the same scale as `Heatmap.Calendar`. Use it where someone needs a particular date ("last Tuesday") rather than the shape of a whole year, such as a day picker. Every month is six weeks tall, so the height never changes as the arrows page through. Days stretch to share the width, so give it a width (a dialog, a column) rather than letting it span a wide screen.
+
+```tsx
+import Heatmap from '@rific/heatmap'
+import { useState } from 'react'
+
+export default function DayPicker({ data, firstDate, today }) {
+  const [month, setMonth] = useState(today.slice(0, 7))
+  const [selected, setSelected] = useState<string | null>(null)
+  return (
+    <Heatmap.Month
+      data={data}
+      month={month}
+      onMonthChange={setMonth}
+      minDate={firstDate}
+      maxDate={today}
+      selectedDate={selected}
+      onDayPress={(_, date) => setSelected(date)}
+    />
+  )
+}
+```
+
+The month is controlled: `onMonthChange` gets the month an arrow moves to, and the arrows stop at the months of `minDate` and `maxDate`. Days outside those bounds are dimmed and can't be pressed. The selected day is outlined in the theme's `selectedBorderColor` and today in `todayBorderColor` (set it to `'transparent'` to mark today by its bold date alone). Each date is near-black or near-white, whichever reads better on its fill.
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `data` | `DataPoint[]` | required | Same shape as `Heatmap.Calendar`. A point's `color` replaces its scale color. |
+| `month` | `string` | required | The month shown, `YYYY-MM`. |
+| `onMonthChange` | `(month: string) => void` | - | Called with the month an arrow moves to. Without it the header has no arrows. |
+| `minDate` | `string` | - | First day that can be pressed, `YYYY-MM-DD`. The previous arrow stops at its month. |
+| `maxDate` | `string` | - | Last day that can be pressed, `YYYY-MM-DD`. The next arrow stops at its month. |
+| `selectedDate` | `string \| null` | - | The day outlined, `YYYY-MM-DD`. |
+| `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a day is tapped, the same as `Heatmap.Calendar`'s. Without it days can't be pressed. |
+| `weekStartsOn` | `0`-`6` | `0` | The weekday each row starts on, `0` for Sunday, `1` for Monday. |
+| `color` | `string` | - | Single accent color, as on `Heatmap.Calendar`. |
+| `colorScale` | `Partial<ColorScale>` | auto | As on `Heatmap.Calendar`. Its `emptyColor` fills days with no data; `'transparent'` leaves them plain. |
+| `colorScheme` | `'light' \| 'dark'` | - | Built-in light or dark palette and theme. |
+| `autoScale` | `boolean` | `true` | Scale each day relative to the max value in `data`. Pass only the month's points to scale to the month's busiest day. |
+| `theme` | `Partial<HeatmapTheme>` | See [Theme](#theme) | The month uses `cellRadius`, `gutterSize` (the gap between days), `monthLabelColor` (title and arrows), `dayLabelColor` (weekday initials), `backgroundColor`, `selectedBorderColor` and `todayBorderColor`. |
+| `valueLabel` | `string` | `'event'` | Unit in each day's accessibility label, pluralized automatically (`'October 12, 2026: 8 logs'`). |
+| `textStyle` | `StyleProp<TextStyle>` | - | Applied to the title, weekdays and dates under the month's own colors, for a font family or size. |
+
 ## TypeScript
 
 Types for the documented API are exported:
@@ -206,6 +251,7 @@ import Heatmap, {
   type DataPoint,
   type HeatmapProps,
   type HeatmapTheme,
+  type MonthProps,
   type TooltipData,
 } from '@rific/heatmap'
 ```

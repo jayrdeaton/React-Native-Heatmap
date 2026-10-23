@@ -45,6 +45,35 @@ export function buildWeekGrid(startDate: Date, endDate: Date): string[][] {
   return weeks
 }
 
+/**
+ * Builds a month as six weeks of day strings (YYYY-MM-DD), so every month takes the same height.
+ * `month` is YYYY-MM. Each week starts on weekStartsOn (0 is Sunday); days before the month
+ * starts and after it ends are empty strings, as in buildWeekGrid.
+ */
+export function buildMonthGrid(month: string, weekStartsOn = 0): string[][] {
+  const [y, m] = month.split('-').map(Number)
+  const leading = (new Date(y, m - 1, 1).getDay() - weekStartsOn + 7) % 7
+  const length = new Date(y, m, 0).getDate()
+  return Array.from({ length: 6 }, (_, week) =>
+    Array.from({ length: 7 }, (_, day) => {
+      const date = week * 7 + day - leading + 1
+      return date >= 1 && date <= length ? `${month}-${String(date).padStart(2, '0')}` : ''
+    })
+  )
+}
+
+/** A YYYY-MM month moved by some months, across years as needed. */
+export function shiftMonth(month: string, by: number): string {
+  const [y, m] = month.split('-').map(Number)
+  return toDateString(new Date(y, m - 1 + by, 1)).slice(0, 7)
+}
+
+/** `2026-10` as `October 2026`. */
+export function formatMonthTitle(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return `${fullMonthNames[m - 1]} ${y}`
+}
+
 export interface MonthLabel {
   label: string
   weekIndex: number

@@ -70,6 +70,29 @@ function interpolateColor(a: string, b: string, t: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`
 }
 
+const nearBlack = '#0f0f0f'
+const nearWhite = '#f0f0f0'
+const readableHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+
+// WCAG relative luminance
+function luminance(hex: string): number {
+  const [r, g, b] = parseHex(hex).map((channel) => {
+    const c = channel / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** Near-black or near-white, whichever has more WCAG contrast on the background. A background that isn't 3 or 6 digit
+ * hex (such as 'transparent') can't be read, so it gets the one that reads on the colorScheme's own background. */
+export function getContrastTextColor(background: string, colorScheme?: 'light' | 'dark'): string {
+  if (!readableHex.test(background)) return colorScheme === 'dark' ? nearWhite : nearBlack
+  const l = luminance(background)
+  const lightContrast = (luminance(nearWhite) + 0.05) / (l + 0.05)
+  const darkContrast = (l + 0.05) / (luminance(nearBlack) + 0.05)
+  return lightContrast >= darkContrast ? nearWhite : nearBlack
+}
+
 export function getAutoScaleColor(value: number | undefined, min: number, max: number, scale: ColorScale): string {
   if (value === undefined || value === 0) return scale.emptyColor ?? scale.colors[0]
   const nonEmptyColors = scale.colors.slice(1)

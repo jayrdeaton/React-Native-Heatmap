@@ -1,4 +1,4 @@
-import { buildWeekGrid, formatDisplayDate, getDefaultDateRange, getMonthLabels, getTodayString, toDateString } from '../../utils/dateUtils'
+import { buildMonthGrid, buildWeekGrid, formatDisplayDate, formatMonthTitle, getDefaultDateRange, getMonthLabels, getTodayString, shiftMonth, toDateString } from '../../utils/dateUtils'
 
 describe('toDateString', () => {
   it('formats a date to YYYY-MM-DD', () => {
@@ -143,5 +143,65 @@ describe('getDefaultDateRange', () => {
     const diffDays = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     expect(diffDays).toBeGreaterThanOrEqual(364)
     expect(diffDays).toBeLessThanOrEqual(366)
+  })
+})
+
+describe('buildMonthGrid', () => {
+  it('returns six weeks of seven days', () => {
+    const weeks = buildMonthGrid('2026-10')
+    expect(weeks).toHaveLength(6)
+    weeks.forEach((week) => expect(week).toHaveLength(7))
+  })
+
+  it('starts the month on its weekday, Sunday first, with empty strings around it', () => {
+    // October 1, 2026 is a Thursday
+    const weeks = buildMonthGrid('2026-10')
+    expect(weeks[0]).toEqual(['', '', '', '', '2026-10-01', '2026-10-02', '2026-10-03'])
+    expect(weeks[4]).toEqual(['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31'])
+    expect(weeks[5]).toEqual(['', '', '', '', '', '', ''])
+  })
+
+  it('starts each week on weekStartsOn', () => {
+    expect(buildMonthGrid('2026-10', 1)[0]).toEqual(['', '', '', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'])
+    expect(buildMonthGrid('2026-10', 4)[0]).toEqual(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07'])
+  })
+
+  it('keeps six weeks for a month that fits in four', () => {
+    // February 2026 starts on a Sunday and has 28 days
+    const weeks = buildMonthGrid('2026-02')
+    expect(weeks[0][0]).toBe('2026-02-01')
+    expect(weeks[3][6]).toBe('2026-02-28')
+    expect(weeks[4].concat(weeks[5]).every((day) => day === '')).toBe(true)
+  })
+
+  it('reaches into a sixth week when the month needs it', () => {
+    // August 2026 starts on a Saturday and has 31 days
+    const weeks = buildMonthGrid('2026-08')
+    expect(weeks[0]).toEqual(['', '', '', '', '', '', '2026-08-01'])
+    expect(weeks[5]).toEqual(['2026-08-30', '2026-08-31', '', '', '', '', ''])
+  })
+
+  it('counts a leap day', () => {
+    expect(buildMonthGrid('2028-02').flat().filter(Boolean)).toHaveLength(29)
+  })
+})
+
+describe('shiftMonth', () => {
+  it('moves a month either way', () => {
+    expect(shiftMonth('2026-10', -1)).toBe('2026-09')
+    expect(shiftMonth('2026-10', 1)).toBe('2026-11')
+  })
+
+  it('moves across years', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12')
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01')
+    expect(shiftMonth('2026-10', -22)).toBe('2024-12')
+  })
+})
+
+describe('formatMonthTitle', () => {
+  it('names the month and year', () => {
+    expect(formatMonthTitle('2026-10')).toBe('October 2026')
+    expect(formatMonthTitle('2027-01')).toBe('January 2027')
   })
 })
