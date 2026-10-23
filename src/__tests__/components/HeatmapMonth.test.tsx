@@ -30,6 +30,11 @@ describe('Heatmap.Month', () => {
     expect(container.textContent).toMatch(/^October 2026SMTWTFS1234/)
   })
 
+  it('draws the same days with fixedWeeks', () => {
+    renderMonth({ fixedWeeks: true })
+    expect(screen.getAllByRole('button')).toHaveLength(31 + 2)
+  })
+
   it('starts each week on weekStartsOn', () => {
     const { container } = renderMonth({ weekStartsOn: 1 })
     expect(container.textContent).toMatch(/^October 2026MTWTFSS1234/)

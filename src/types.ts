@@ -136,6 +136,8 @@ export interface MonthProps {
   onDayPress?: (day: DataPoint | null, date: string) => void
   /** The weekday each row starts on, 0 for Sunday through 6 for Saturday. */
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  /** Six weeks for every month, so the height never changes between months. Otherwise only the weeks the month needs. */
+  fixedWeeks?: boolean
   color?: string
   colorScale?: Partial<ColorScale>
   colorScheme?: 'light' | 'dark'

@@ -46,15 +46,16 @@ export function buildWeekGrid(startDate: Date, endDate: Date): string[][] {
 }
 
 /**
- * Builds a month as six weeks of day strings (YYYY-MM-DD), so every month takes the same height.
+ * Builds a month as weeks of day strings (YYYY-MM-DD): only the weeks it needs (four to six,
+ * five for most), or six for every month with fixedWeeks, so each takes the same height.
  * `month` is YYYY-MM. Each week starts on weekStartsOn (0 is Sunday); days before the month
  * starts and after it ends are empty strings, as in buildWeekGrid.
  */
-export function buildMonthGrid(month: string, weekStartsOn = 0): string[][] {
+export function buildMonthGrid(month: string, weekStartsOn = 0, fixedWeeks = false): string[][] {
   const [y, m] = month.split('-').map(Number)
   const leading = (new Date(y, m - 1, 1).getDay() - weekStartsOn + 7) % 7
   const length = new Date(y, m, 0).getDate()
-  return Array.from({ length: 6 }, (_, week) =>
+  return Array.from({ length: fixedWeeks ? 6 : Math.ceil((leading + length) / 7) }, (_, week) =>
     Array.from({ length: 7 }, (_, day) => {
       const date = week * 7 + day - leading + 1
       return date >= 1 && date <= length ? `${month}-${String(date).padStart(2, '0')}` : ''

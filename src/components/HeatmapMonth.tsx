@@ -24,13 +24,13 @@ function Arrow({ direction, disabled, color, onPress }: ArrowProps) {
 }
 
 // A month of dates, each on its day's color from the same scale as .Calendar, so a particular date is easy to find
-// and the busy days still show. Six weeks every month, so the height never changes as the arrows page through.
-export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle }: MonthProps) {
+// and the busy days still show. Only the weeks the month needs (five for most), or six with fixedWeeks.
+export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle }: MonthProps) {
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const dataMap = useMemo(() => buildDataMap(data), [data])
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
-  const weeks = useMemo(() => buildMonthGrid(month, weekStartsOn), [month, weekStartsOn])
+  const weeks = useMemo(() => buildMonthGrid(month, weekStartsOn, fixedWeeks), [month, weekStartsOn, fixedWeeks])
   const weekdays = Array.from({ length: 7 }, (_, i) => weekdayInitials[(weekStartsOn + i) % 7])
   const today = getTodayString()
 

@@ -197,7 +197,7 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 
 ## Month
 
-`Heatmap.Month` draws one month as a calendar of dates, each day on its color from the same scale as `Heatmap.Calendar`. Use it where someone needs a particular date ("last Tuesday") rather than the shape of a whole year, such as a day picker. Every month is six weeks tall, so the height never changes as the arrows page through. Days stretch to share the width, so give it a width (a dialog, a column) rather than letting it span a wide screen.
+`Heatmap.Month` draws one month as a calendar of dates, each day on its color from the same scale as `Heatmap.Calendar`. Use it where someone needs a particular date ("last Tuesday") rather than the shape of a whole year, such as a day picker. A month draws only the weeks it needs, five for most and four or six now and then; pass `fixedWeeks` for six every month, so the height never changes as the arrows page through. Days stretch to share the width, so give it a width (a dialog, a column) rather than letting it span a wide screen.
 
 ```tsx
 import Heatmap from '@rific/heatmap'
@@ -232,6 +232,7 @@ The month is controlled: `onMonthChange` gets the month an arrow moves to, and t
 | `selectedDate` | `string \| null` | - | The day outlined, `YYYY-MM-DD`. |
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a day is tapped, the same as `Heatmap.Calendar`'s. Without it days can't be pressed. |
 | `weekStartsOn` | `0`-`6` | `0` | The weekday each row starts on, `0` for Sunday, `1` for Monday. |
+| `fixedWeeks` | `boolean` | `false` | Six weeks for every month, so the height never changes. Otherwise only the weeks the month needs. |
 | `color` | `string` | - | Single accent color, as on `Heatmap.Calendar`. |
 | `colorScale` | `Partial<ColorScale>` | auto | As on `Heatmap.Calendar`. Its `emptyColor` fills days with no data; `'transparent'` leaves them plain. |
 | `colorScheme` | `'light' \| 'dark'` | - | Built-in light or dark palette and theme. |

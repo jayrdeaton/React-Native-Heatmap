@@ -147,9 +147,9 @@ describe('getDefaultDateRange', () => {
 })
 
 describe('buildMonthGrid', () => {
-  it('returns six weeks of seven days', () => {
+  it('returns only the weeks the month needs, seven days each', () => {
     const weeks = buildMonthGrid('2026-10')
-    expect(weeks).toHaveLength(6)
+    expect(weeks).toHaveLength(5)
     weeks.forEach((week) => expect(week).toHaveLength(7))
   })
 
@@ -158,7 +158,6 @@ describe('buildMonthGrid', () => {
     const weeks = buildMonthGrid('2026-10')
     expect(weeks[0]).toEqual(['', '', '', '', '2026-10-01', '2026-10-02', '2026-10-03'])
     expect(weeks[4]).toEqual(['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31'])
-    expect(weeks[5]).toEqual(['', '', '', '', '', '', ''])
   })
 
   it('starts each week on weekStartsOn', () => {
@@ -166,19 +165,33 @@ describe('buildMonthGrid', () => {
     expect(buildMonthGrid('2026-10', 4)[0]).toEqual(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07'])
   })
 
-  it('keeps six weeks for a month that fits in four', () => {
+  it('draws four weeks for a month that fits in four', () => {
     // February 2026 starts on a Sunday and has 28 days
     const weeks = buildMonthGrid('2026-02')
+    expect(weeks).toHaveLength(4)
     expect(weeks[0][0]).toBe('2026-02-01')
     expect(weeks[3][6]).toBe('2026-02-28')
-    expect(weeks[4].concat(weeks[5]).every((day) => day === '')).toBe(true)
   })
 
   it('reaches into a sixth week when the month needs it', () => {
     // August 2026 starts on a Saturday and has 31 days
     const weeks = buildMonthGrid('2026-08')
+    expect(weeks).toHaveLength(6)
     expect(weeks[0]).toEqual(['', '', '', '', '', '', '2026-08-01'])
     expect(weeks[5]).toEqual(['2026-08-30', '2026-08-31', '', '', '', '', ''])
+  })
+
+  it('counts the weeks from weekStartsOn', () => {
+    // October 2026 needs five weeks from Sunday, six from Friday (the 1st is a Thursday, the last of seven)
+    expect(buildMonthGrid('2026-10', 5)).toHaveLength(6)
+  })
+
+  it('pads every month to six weeks with fixedWeeks', () => {
+    const february = buildMonthGrid('2026-02', 0, true)
+    expect(february).toHaveLength(6)
+    expect(february[4].concat(february[5]).every((day) => day === '')).toBe(true)
+    expect(buildMonthGrid('2026-10', 0, true)[5]).toEqual(['', '', '', '', '', '', ''])
+    expect(buildMonthGrid('2026-08', 0, true)).toEqual(buildMonthGrid('2026-08'))
   })
 
   it('counts a leap day', () => {

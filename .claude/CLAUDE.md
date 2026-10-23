@@ -53,9 +53,9 @@ src/
     DayLabels.tsx                  - Mon/Wed/Fri row labels
     MonthLabels.tsx                - month-name labels positioned by week index
     Tooltip.tsx                    - floating tooltip above a pressed cell, or the caller's renderTooltip
-    HeatmapMonth.tsx               - public .Month: one month as six weeks of dates (plain Views and Pressables, no SVG), each day
-                                     on its color from .Calendar's scale, date text by contrast; controlled month, arrows bounded
-                                     by minDate/maxDate, selectedDate outlined, weekStartsOn
+    HeatmapMonth.tsx               - public .Month: one month of dates, only the weeks it needs or six with fixedWeeks (plain Views
+                                     and Pressables, no SVG), each day on its color from .Calendar's scale, date text by contrast;
+                                     controlled month, arrows bounded by minDate/maxDate, selectedDate outlined, weekStartsOn
     HeatmapScatter.tsx             - public .Scatter (experimental, see EXPERIMENTAL.md): deterministic jittered dot swarm from segments
     HeatmapTimeline.tsx            - public .Timeline (experimental, see EXPERIMENTAL.md): pan/pinch-zoomable bucketed strip,
                                      hand-rolled PanResponder built once in a run-once layout effect (see in-file comments on why)
@@ -63,7 +63,7 @@ src/
     colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging,
                                      near-black/near-white text by WCAG contrast (getContrastTextColor)
     dateUtils.ts                   - date string parse/format, week-grid building, month-label placement, default 1-year date range,
-                                     .Month's six-week month grid, month shifting and titles
+                                     .Month's month grid (its weeks, or six with fixedWeeks), month shifting and titles
     timeUtils.ts                   - zoom<->granularity math, time bucketing, time-label formatting for .Timeline
     layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
                                      rows, month labels, each cell's own margins)
@@ -114,7 +114,7 @@ No optional peer dependencies.
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 222 tests across 11 suites (7 component suites + 4 util suites), all passing as of this writing
+- 225 tests across 11 suites (7 component suites + 4 util suites), all passing as of this writing
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - Every part of `.Calendar` that lines up with the cells steps by `cellPitch` (utils/layoutUtils.ts). Until 2026-10-22 each used `cellSize + gutterSize` while a cell also took `cellPadding` on every side, so with the default theme the grid cut most of Saturday's row off, the day labels slid 2pt a row off their cells and the month labels 4pt a week. The component tests' `react-native` mock renders no styles, so this is pinned by layoutUtils.test.ts; it was checked by eye in Solitaire's web build
 - Coverage is collected on every run and held to the fleet's 70% global `coverageThreshold` from `@infinitetoken/jest-config` (no local override in `jest.config.cjs`); real coverage sits far above it (about 99% statements, 96% branches)
