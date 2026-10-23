@@ -97,7 +97,7 @@ Pass `animated` to enable all animations. No extra dependencies - uses the built
 ```
 
 - **Load ripple**: cells fade and scale in on mount, radiating outward from today's column.
-- **Today pulse**: the current day cell breathes with a looping scale animation.
+- **Today pulse**: the current day cell breathes with a looping scale animation. It's also outlined in `todayBorderColor`; set that to `'transparent'` to mark today by the pulse alone. The day whose tooltip is open is outlined in `selectedBorderColor`, today included.
 - **Press spring**: cells scale down on press and spring back on release.
 
 The current day always receives a border indicator regardless of the `animated` prop.

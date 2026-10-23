@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react'
 import { Animated } from 'react-native'
+import * as svg from 'react-native-svg'
 
 import { HeatmapCell } from '../../components/HeatmapCell'
 import type { CellMode, DataPoint, Segment } from '../../types'
@@ -53,6 +54,18 @@ describe('HeatmapCell', () => {
       expect(() => {
         render(<HeatmapCell {...baseProps} isSelected />)
       }).not.toThrow()
+    })
+
+    it('outlines today in the today color, and in the selection color once it is selected', () => {
+      const rect = jest.spyOn(svg, 'Rect')
+      const strokes = () => rect.mock.calls.map(([props]) => props.stroke).filter(Boolean)
+
+      render(<HeatmapCell {...baseProps} isToday />)
+      expect(strokes()).toEqual([baseProps.todayBorderColor])
+
+      rect.mockClear()
+      render(<HeatmapCell {...baseProps} isToday isSelected />)
+      expect(strokes()).toEqual([baseProps.selectedBorderColor])
     })
 
     it('renders an empty (value 0) gradient cell without throwing', () => {

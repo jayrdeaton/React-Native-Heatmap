@@ -101,7 +101,9 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const borderInset = 1
   const borderWidth = 1.5
 
-  const borderColor = isToday ? todayBorderColor : selectedBorderColor
+  // A selection outranks today, so a host whose todayBorderColor is 'transparent' (today marked by its pulse alone)
+  // still outlines today when it's tapped
+  const borderColor = isSelected ? selectedBorderColor : todayBorderColor
   const todayBorder = isToday || isSelected ? <Rect x={borderInset} y={borderInset} width={size - borderInset * 2} height={size - borderInset * 2} rx={Math.max(0, radius - borderInset)} ry={Math.max(0, radius - borderInset)} fill='none' stroke={borderColor} strokeWidth={borderWidth} /> : null
 
   const dataLayer = (
