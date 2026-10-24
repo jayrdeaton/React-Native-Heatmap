@@ -331,6 +331,38 @@ describe('Heatmap.Timeline', () => {
       expect(onTimePress).toHaveBeenCalledTimes(1)
     })
 
+    it("reports a tapped hour as the device's own hour, with its value", () => {
+      const onTimePress = jest.fn()
+      render(<Heatmap.Timeline data={SAMPLE_DATA} startTime={FIXED_START} endTime={FIXED_END} zoom={20} onTimePress={onTimePress} />)
+      const handlers = getLatestPanHandlers()
+
+      // touchX 50 at 20px an hour is 02:30 local on January 1, the hour SAMPLE_DATA gives 12
+      act(() => {
+        handlers.onPanResponderGrant({ nativeEvent: { touches: [{ pageX: 50, pageY: 10, locationX: 50 }] } })
+      })
+      act(() => {
+        handlers.onPanResponderRelease({ nativeEvent: { touches: [], locationX: 50 } }, { dx: 0, dy: 0, vx: 0, x0: 50 })
+      })
+
+      expect(onTimePress).toHaveBeenCalledWith({ startTime: new Date(2026, 0, 1, 2), endTime: new Date(2026, 0, 1, 3), granularity: 'hour', value: 12 })
+    })
+
+    it('reports a tapped day from local midnight to local midnight', () => {
+      const onTimePress = jest.fn()
+      render(<Heatmap.Timeline data={SAMPLE_DATA} startTime={FIXED_START} endTime={FIXED_END} zoom={2} onTimePress={onTimePress} />)
+      const handlers = getLatestPanHandlers()
+
+      // touchX 10 at 2px an hour is 05:00 local on January 1; a UTC day would start at 07:00 on a UTC+7 device
+      act(() => {
+        handlers.onPanResponderGrant({ nativeEvent: { touches: [{ pageX: 10, pageY: 10, locationX: 10 }] } })
+      })
+      act(() => {
+        handlers.onPanResponderRelease({ nativeEvent: { touches: [], locationX: 10 } }, { dx: 0, dy: 0, vx: 0, x0: 10 })
+      })
+
+      expect(onTimePress).toHaveBeenCalledWith({ startTime: new Date(2026, 0, 1), endTime: new Date(2026, 0, 2), granularity: 'day', value: 3 + 12 + 1 + 20 })
+    })
+
     it('tap-to-select on an empty bucket falls back to a zero value', () => {
       const onTimePress = jest.fn()
       render(<Heatmap.Timeline data={SAMPLE_DATA} startTime={FIXED_START} endTime={FIXED_END} zoom={20} onTimePress={onTimePress} />)

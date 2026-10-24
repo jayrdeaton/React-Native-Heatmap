@@ -4,13 +4,7 @@ import { Rect, Svg } from 'react-native-svg'
 
 import type { TimeBucket, TimelineDataPoint, TimelineGranularity, TimelineProps, TimelineTheme } from '../types'
 import { getAutoScaleColor, mergeColorScale } from '../utils/colorUtils'
-import { bucketStart, buildTimeDataMap, clampZoom, formatTimeLabel, getCellWidth, getGranularity, getLabelInterval, inferTimeBounds } from '../utils/timeUtils'
-
-const BUCKET_MS: Record<TimelineGranularity, number> = {
-  day: 86400000,
-  hour: 3600000,
-  minute: 60000
-}
+import { bucketStart, buildTimeDataMap, clampZoom, formatTimeLabel, getGranularity, getLabelInterval, inferTimeBounds, shiftBucket } from '../utils/timeUtils'
 
 const defaultThemeLight: TimelineTheme = {
   height: 60,
@@ -88,7 +82,7 @@ function buildPanResponder(params: { boundsRef: MutableRefObject<{ start: Date; 
           const b = boundsRef.current
           const timeMs = b.start.getTime() + (worldX / zoomRef.current) * 3600000
           const start = bucketStart(new Date(timeMs), gran)
-          const end = new Date(start.getTime() + BUCKET_MS[gran])
+          const end = shiftBucket(start, gran, 1)
           const value = dataMapsRef.current[gran].get(start.getTime()) ?? 0
           onTimePressRef.current?.({ startTime: start, endTime: end, granularity: gran, value })
         } else {
@@ -247,27 +241,27 @@ export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20,
   }, [cancelMomentum, getClampedScroll, startMomentum])
 
   const gran = getGranularity(zoom)
-  const cellWidth = getCellWidth(gran, zoom)
-  const bucketMs = BUCKET_MS[gran]
   const dataMap = dataMaps[gran]
   const dataMax = dataMaxes[gran]
 
   const visibleStartMs = bounds.start.getTime() + (scrollX / zoom) * 3600000
   const visibleEndMs = visibleStartMs + (containerWidth / zoom) * 3600000
-  const firstBucketT = Math.floor(visibleStartMs / bucketMs) * bucketMs
-  const lastBucketT = Math.ceil(visibleEndMs / bucketMs) * bucketMs
   const labelInterval = getLabelInterval(zoom, gran)
 
   const cells: { key: number; x: number; width: number; fill: string }[] = []
   const labels: { key: number; x: number; text: string }[] = []
   let bucketIndex = 0
 
-  for (let t = firstBucketT; t <= lastBucketT; t += bucketMs) {
+  // Buckets on the local clock, stepped by shiftBucket rather than a fixed length, so a day across a daylight saving
+  // change is its real 23 or 25 hours wide and the next one still starts at midnight
+  for (let t = bucketStart(new Date(visibleStartMs), gran).getTime(), next = 0; t <= visibleEndMs; t = next) {
+    next = shiftBucket(new Date(t), gran, 1).getTime()
     if (t < bounds.start.getTime() || t >= bounds.end.getTime()) {
       bucketIndex++
       continue
     }
     const cellX = ((t - bounds.start.getTime()) / 3600000) * zoom - scrollX
+    const cellWidth = ((next - t) / 3600000) * zoom
     const value = dataMap.get(t) ?? 0
     const fill = value > 0 && dataMax > 0 ? getAutoScaleColor(value, 0, dataMax, colorScale) : (colorScale.emptyColor ?? theme.emptyColor)
 

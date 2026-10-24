@@ -1,5 +1,6 @@
+import { defaultDarkGridTheme, defaultGridTheme } from '../../constants'
 import type { ColorScale, DataPoint } from '../../types'
-import { buildDataMap, defaultColorScale, defaultTheme, getColorForValue, getContrastTextColor, getNormalizedValue, mergeColorScale, mergeTheme } from '../../utils/colorUtils'
+import { buildDataMap, defaultColorScale, defaultTheme, getColorForValue, getContrastTextColor, getNormalizedValue, mergeColorScale, mergeGridTheme, mergeTheme } from '../../utils/colorUtils'
 
 describe('defaultColorScale', () => {
   it('has 4 thresholds and 5 colors', () => {
@@ -188,5 +189,20 @@ describe('getContrastTextColor', () => {
     expect(getContrastTextColor('transparent', 'light')).toBe('#0f0f0f')
     expect(getContrastTextColor('transparent', 'dark')).toBe('#f0f0f0')
     expect(getContrastTextColor('rgba(0, 0, 0, 0.5)', 'dark')).toBe('#f0f0f0')
+  })
+})
+
+describe('mergeGridTheme', () => {
+  it('returns the light or dark defaults', () => {
+    expect(mergeGridTheme()).toEqual(defaultGridTheme)
+    expect(mergeGridTheme(undefined, 'dark')).toEqual(defaultDarkGridTheme)
+  })
+
+  it('overrides only the provided fields', () => {
+    const merged = mergeGridTheme({ gap: 1.5, cellHeight: 10, pendingColor: '#3b82f6' }, 'dark')
+    expect(merged.gap).toBe(1.5)
+    expect(merged.cellHeight).toBe(10)
+    expect(merged.pendingColor).toBe('#3b82f6')
+    expect(merged.markColor).toBe(defaultDarkGridTheme.markColor)
   })
 })

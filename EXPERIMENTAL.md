@@ -57,6 +57,8 @@ const data = [
 
 Pan (drag) and pinch-to-zoom are built in, with momentum scrolling on release. Tapping a cell without dragging fires `onTimePress` with the tapped bucket.
 
+Buckets and labels are on the device's clock: a day starts at local midnight and an hour at :00, so a tapped day's `startTime` and `endTime` are local midnights. Before 2026-10-24 they were UTC (a day started at 07:00 on a UTC+7 device).
+
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `data` | `TimelineDataPoint[]` | required | Array of `{ timestamp, value, color?, metadata? }`. `timestamp` is an ISO date string. |

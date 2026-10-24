@@ -1,5 +1,5 @@
-import { defaultDarkColor, defaultDarkTheme, defaultLightColor, defaultTheme } from '../constants'
-import type { ColorScale, DataPoint, HeatmapTheme } from '../types'
+import { defaultDarkColor, defaultDarkGridTheme, defaultDarkTheme, defaultGridTheme, defaultLightColor, defaultTheme } from '../constants'
+import type { ColorScale, DataPoint, GridTheme, HeatmapTheme } from '../types'
 
 export { defaultDarkTheme, defaultTheme }
 
@@ -20,6 +20,11 @@ export const defaultColorScale = generateColorScale(defaultLightColor, 'light')
 
 export function mergeTheme(partial?: Partial<HeatmapTheme>, colorScheme?: 'light' | 'dark'): HeatmapTheme {
   const base = colorScheme === 'dark' ? defaultDarkTheme : defaultTheme
+  return { ...base, ...partial }
+}
+
+export function mergeGridTheme(partial?: Partial<GridTheme>, colorScheme?: 'light' | 'dark'): GridTheme {
+  const base = colorScheme === 'dark' ? defaultDarkGridTheme : defaultGridTheme
   return { ...base, ...partial }
 }
 

@@ -1,4 +1,4 @@
-import type { HeatmapTheme } from '../types'
+import type { GridTheme, HeatmapTheme } from '../types'
 
 export const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -34,4 +34,18 @@ export const defaultDarkTheme: HeatmapTheme = {
   tooltipTextColor: '#f0f0f0',
   todayBorderColor: '#f0f0f0',
   selectedBorderColor: '#f0f0f0'
+}
+
+export const defaultGridTheme: GridTheme = {
+  cellRadius: 2,
+  gap: 2,
+  markHeight: 3,
+  markGap: 2,
+  markColor: '#cf222e',
+  backgroundColor: 'transparent'
+}
+
+export const defaultDarkGridTheme: GridTheme = {
+  ...defaultGridTheme,
+  markColor: '#f85149'
 }

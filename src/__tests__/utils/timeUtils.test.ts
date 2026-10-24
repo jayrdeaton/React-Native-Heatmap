@@ -1,5 +1,5 @@
 import type { TimelineDataPoint } from '../../types'
-import { bucketStart, buildTimeDataMap, clampZoom, formatTimeLabel, getCellWidth, getGranularity, getLabelInterval, inferTimeBounds } from '../../utils/timeUtils'
+import { bucketStart, buildTimeDataMap, clampZoom, formatBucketLabel, formatTimeLabel, getCellWidth, getGranularity, getLabelInterval, inferTimeBounds, shiftBucket } from '../../utils/timeUtils'
 
 describe('clampZoom', () => {
   it('clamps a value below the minimum', () => {
@@ -49,36 +49,15 @@ describe('getCellWidth', () => {
   })
 })
 
-describe('bucketStart', () => {
-  it('floors to the day boundary, zeroing out time-of-day', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 13, 45, 30))
-    const bucket = bucketStart(date, 'day')
-    expect(bucket.getTime()).toBe(Date.UTC(2026, 4, 17, 0, 0, 0))
-  })
-
-  it('floors to the hour boundary, zeroing out minutes and seconds', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 13, 45, 30))
-    const bucket = bucketStart(date, 'hour')
-    expect(bucket.getTime()).toBe(Date.UTC(2026, 4, 17, 13, 0, 0))
-  })
-
-  it('floors to the minute boundary, zeroing out seconds', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 13, 45, 30))
-    const bucket = bucketStart(date, 'minute')
-    expect(bucket.getTime()).toBe(Date.UTC(2026, 4, 17, 13, 45, 0))
-  })
-})
-
 describe('buildTimeDataMap', () => {
   it('sums values for multiple points landing in the same bucket', () => {
     const data: TimelineDataPoint[] = [
-      { timestamp: new Date(Date.UTC(2026, 4, 17, 13, 5, 0)).toISOString(), value: 2 },
-      { timestamp: new Date(Date.UTC(2026, 4, 17, 13, 40, 0)).toISOString(), value: 3 }
+      { timestamp: new Date(2026, 4, 17, 13, 5, 0).toISOString(), value: 2 },
+      { timestamp: new Date(2026, 4, 17, 13, 40, 0).toISOString(), value: 3 }
     ]
     const map = buildTimeDataMap(data, 'hour')
-    const key = Date.UTC(2026, 4, 17, 13, 0, 0)
     expect(map.size).toBe(1)
-    expect(map.get(key)).toBe(5)
+    expect(map.get(new Date(2026, 4, 17, 13).getTime())).toBe(5)
   })
 
   it('returns an empty Map for empty input', () => {
@@ -89,28 +68,29 @@ describe('buildTimeDataMap', () => {
 
 describe('formatTimeLabel', () => {
   it('formats a day-granularity label using month/day', () => {
-    const date = new Date(Date.UTC(2026, 4, 17))
-    expect(formatTimeLabel(date, 'day')).toBe('May 17')
+    expect(formatTimeLabel(new Date(2026, 4, 17), 'day')).toBe('May 17')
   })
 
   it('falls back to month/day format for hour granularity at hour 0', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 0, 0, 0))
-    expect(formatTimeLabel(date, 'hour')).toBe('May 17')
+    expect(formatTimeLabel(new Date(2026, 4, 17, 0), 'hour')).toBe('May 17')
   })
 
   it('formats a non-zero hour for hour granularity', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 9, 0, 0))
-    expect(formatTimeLabel(date, 'hour')).toBe('9:00')
+    expect(formatTimeLabel(new Date(2026, 4, 17, 9), 'hour')).toBe('9:00')
   })
 
   it('falls back to H:00 for minute granularity at minute 0', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 9, 0, 0))
-    expect(formatTimeLabel(date, 'minute')).toBe('9:00')
+    expect(formatTimeLabel(new Date(2026, 4, 17, 9, 0), 'minute')).toBe('9:00')
   })
 
   it('zero-pads a non-zero minute for minute granularity', () => {
-    const date = new Date(Date.UTC(2026, 4, 17, 9, 5, 0))
-    expect(formatTimeLabel(date, 'minute')).toBe('9:05')
+    expect(formatTimeLabel(new Date(2026, 4, 17, 9, 5), 'minute')).toBe('9:05')
+  })
+
+  it('reads the local clock, not UTC', () => {
+    // 00:30 local is the previous day's evening in UTC anywhere east of Greenwich
+    expect(formatTimeLabel(new Date(2026, 4, 17, 0, 30), 'day')).toBe('May 17')
+    expect(formatTimeLabel(new Date(2026, 4, 17, 21), 'hour')).toBe('21:00')
   })
 })
 
@@ -154,5 +134,64 @@ describe('inferTimeBounds', () => {
     const { start, end } = inferTimeBounds(data)
     expect(start.getTime()).toBe(new Date(earliest).getTime())
     expect(end.getTime()).toBe(new Date(latest).getTime())
+  })
+})
+
+describe('bucketStart', () => {
+  const moment = new Date(2026, 9, 24, 9, 41, 30, 500)
+
+  it('starts a day at local midnight', () => {
+    expect(bucketStart(moment, 'day')).toEqual(new Date(2026, 9, 24))
+  })
+
+  it('starts an hour at :00 and a minute at :00 seconds', () => {
+    expect(bucketStart(moment, 'hour')).toEqual(new Date(2026, 9, 24, 9))
+    expect(bucketStart(moment, 'minute')).toEqual(new Date(2026, 9, 24, 9, 41))
+  })
+
+  it("starts a day at the device's midnight rather than UTC's", () => {
+    // Floored epoch milliseconds would start this day at 07:00 on a UTC+7 device
+    const justAfterMidnight = bucketStart(new Date(2026, 4, 17, 0, 30), 'day')
+    expect([justAfterMidnight.getDate(), justAfterMidnight.getHours(), justAfterMidnight.getMinutes()]).toEqual([17, 0, 0])
+  })
+
+  it('leaves a moment already on its bucket where it is', () => {
+    const hour = new Date(2026, 9, 24, 9)
+    expect(bucketStart(hour, 'hour')).toEqual(hour)
+  })
+})
+
+describe('shiftBucket', () => {
+  it('steps days on the calendar, across months and years', () => {
+    expect(shiftBucket(new Date(2026, 9, 31), 'day', 1)).toEqual(new Date(2026, 10, 1))
+    expect(shiftBucket(new Date(2026, 0, 1), 'day', -1)).toEqual(new Date(2025, 11, 31))
+  })
+
+  it('steps hours and minutes in real time', () => {
+    const hour = new Date(2026, 9, 24, 9)
+    expect(shiftBucket(hour, 'hour', -47).getTime()).toBe(hour.getTime() - 47 * 3600000)
+    expect(shiftBucket(hour, 'minute', 5).getTime()).toBe(hour.getTime() + 5 * 60000)
+  })
+})
+
+describe('buildTimeDataMap across buckets', () => {
+  it('sums the points in each local bucket, keyed by its start', () => {
+    const data: TimelineDataPoint[] = [
+      { timestamp: new Date(2026, 9, 24, 9, 5).toISOString(), value: 2 },
+      { timestamp: new Date(2026, 9, 24, 9, 55).toISOString(), value: 3 },
+      { timestamp: new Date(2026, 9, 24, 10, 0).toISOString(), value: 1 }
+    ]
+    const map = buildTimeDataMap(data, 'hour')
+    expect(map.get(new Date(2026, 9, 24, 9).getTime())).toBe(5)
+    expect(map.get(new Date(2026, 9, 24, 10).getTime())).toBe(1)
+    expect(buildTimeDataMap(data, 'day').get(new Date(2026, 9, 24).getTime())).toBe(6)
+  })
+})
+
+describe('formatBucketLabel', () => {
+  it('names a day by its date and an hour or minute by its time too', () => {
+    expect(formatBucketLabel(new Date(2026, 9, 24), 'day')).toBe('October 24, 2026')
+    expect(formatBucketLabel(new Date(2026, 9, 24, 9), 'hour')).toBe('October 24, 2026, 09:00')
+    expect(formatBucketLabel(new Date(2026, 9, 24, 21, 7), 'minute')).toBe('October 24, 2026, 21:07')
   })
 })

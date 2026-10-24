@@ -1,5 +1,5 @@
 import type React from 'react'
-import type { StyleProp, TextStyle } from 'react-native'
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native'
 
 export interface Segment {
   color: string
@@ -147,4 +147,58 @@ export interface MonthProps {
   valueLabel?: string
   /** Applied to every text (title, weekdays, dates) under the month's own colors, for a font family or size. */
   textStyle?: StyleProp<TextStyle>
+}
+
+export interface GridTheme {
+  /** Each cell's height. By default 10 in a single row, and square cells filling the width in several. */
+  cellHeight?: number
+  cellRadius: number
+  /** Between cells, across and down. */
+  gap: number
+  markHeight: number
+  /** Between a row of cells and the marks under it. */
+  markGap: number
+  /** A mark's color when its point has none of its own. */
+  markColor: string
+  /** The outline of pending cells. Without one, the scale's top color. */
+  pendingColor?: string
+  backgroundColor: string
+}
+
+export interface GridProps {
+  /** Values by time. Each point counts toward the cell its timestamp falls in, so points already one per cell map 1:1. */
+  data: TimelineDataPoint[]
+  rows?: number
+  columns?: number
+  /** The length of time each cell covers, on the device's clock. */
+  granularity?: TimelineGranularity
+  /** Time runs across each row ('row', like reading) or down each column ('column', like .Calendar's weeks). */
+  fillDirection?: 'row' | 'column'
+  /** Start each row (or column) on its own boundary when it spans exactly an hour of minutes, a day of hours or a week
+   * of days: :00, local midnight, or weekStartsOn. Defaults to on when there's more than one, so a 7 by 24 grid of
+   * hours is a week of days, and off for a single strip, which ends at the cell under way. */
+  align?: boolean
+  /** The weekday a week of days starts on when aligned, 0 for Sunday through 6 for Saturday. */
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  /** Defaults to now. The cell under way is the last one; aligned, the rest of its row stays blank. The grid doesn't move
+   * on its own; render it again to move it on. */
+  endTime?: Date
+  color?: string
+  colorScale?: Partial<ColorScale>
+  colorScheme?: 'light' | 'dark'
+  /** Scale each cell against the busiest one in view, from zero. Otherwise by the color scale's thresholds. */
+  autoScale?: boolean
+  theme?: Partial<GridTheme>
+  /** A tick under each cell holding a point with a value above 0, in the point's color or the theme's markColor. While
+   * this is set, a tick row sits under every row of cells, so the grid keeps its height whether or not anything is marked. */
+  marks?: TimelineDataPoint[]
+  /** Cells before the one holding this moment are drawn hollow, for data still loading (a first sync paging newest first). */
+  pendingBefore?: Date
+  /** Makes each cell a button. Without it the grid takes no touches, so it can sit inside something pressable. */
+  onCellPress?: (bucket: TimeBucket) => void
+  /** The unit in the default labels, pluralized with an s: 'log' reads 'Logs in 12 of the last 48 hours'. */
+  valueLabel?: string
+  /** Read for the whole grid, in place of the default. With onCellPress each cell is labeled instead. */
+  accessibilityLabel?: string
+  style?: StyleProp<ViewStyle>
 }
