@@ -1,7 +1,7 @@
 import React, { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-import type { CellMode, ColorScale, DataPoint, HeatmapTheme } from '../types'
+import type { CellMode, ColorScale, DataPoint, HeatmapTheme, PressableComponent } from '../types'
 import { getAutoScaleColor, getColorForValue, getNormalizedValue } from '../utils/colorUtils'
 import { getTodayString } from '../utils/dateUtils'
 import { cellPitch } from '../utils/layoutUtils'
@@ -23,11 +23,12 @@ interface WeekColumnProps {
   animationDirection: 'ltr' | 'rtl'
   animationDuration: number
   selectedDate?: string | null
+  pressable?: PressableComponent
 }
 
 const todayString = getTodayString()
 
-function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration, selectedDate }: WeekColumnProps) {
+function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration, selectedDate, pressable }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize, todayBorderColor, selectedBorderColor } = theme
   const pitch = cellPitch(cellSize, gutterSize)
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
@@ -48,7 +49,7 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoS
         const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(effectiveValue, dataRange.min, dataRange.max, colorScale) : getColorForValue(effectiveValue, colorScale))
         const normalizedValue = getNormalizedValue(effectiveValue, colorScale, dataRange?.max)
 
-        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} isSelected={date === selectedDate} animated={animated} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} selectedBorderColor={selectedBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} />
+        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} isSelected={date === selectedDate} animated={animated} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} selectedBorderColor={selectedBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} pressable={pressable} />
       })}
     </View>
   )

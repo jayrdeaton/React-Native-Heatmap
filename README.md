@@ -65,6 +65,7 @@ export default function App() {
 | `renderCell` | `(data: DataPoint \| null, date: string) => ReactNode` | - | Replace the default cell with a custom component. |
 | `tooltipLabel` | `string` | `'event'` | Unit label in the default tooltip. Pluralized automatically (e.g. `'workout'` → `'3 workouts'`). |
 | `tooltipEmptyLabel` | `string` | `'No events'` | Label shown in the tooltip for days with no data. |
+| `pressable` | `PressableComponent` | React Native's `Pressable` | Draws every press (each day, and a tap elsewhere that clears the selection) through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
 
 ## Cell modes
 
@@ -196,6 +197,22 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
 />
 ```
 
+## Your own Pressable (e.g. haptics on every tap)
+
+Every tap the package draws goes through React Native's `Pressable`. Pass a drop-in for it as `pressable` on `Heatmap.Calendar`, `Heatmap.Month` or `Heatmap.Grid` and those taps go through yours instead. `@rific/feedback-press`'s `Pressable` gives each one a `selection` haptic on touch-down, honoring its provider's haptics toggle, like every other tap in an app built on it:
+
+```tsx
+import { Pressable } from '@rific/feedback-press'
+
+<Heatmap.Calendar data={data} onSelectionChange={setDay} pressable={Pressable} />
+<Heatmap.Month data={data} month={month} onMonthChange={setMonth} onDayPress={pickDay} pressable={Pressable} />
+```
+
+- **It's handed `Pressable`'s own props** (`onPress`, `onPressIn` and `onPressOut`, a `style` callback for the pressed look, `disabled`, the accessibility props), so it must pass them all on. The package doesn't depend on feedback-press: any component with `Pressable`'s props works.
+- **The calendar's press spring still runs:** a day hands its own `onPressIn` and `onPressOut` to your pressable, which calls them after its own work (feedback-press does).
+- **What goes through it:** on `Heatmap.Calendar`, each day and the tap elsewhere on the calendar that clears the selection (only a press while a day is selected, so a tap that would do nothing gives no feedback); on `Heatmap.Month`, each day and both arrows; on `Heatmap.Grid`, each cell when `onCellPress` is set. A day or arrow that can't be pressed (outside `minDate`/`maxDate`, or with no handler) is `disabled`, so it gets no press either.
+- **A touch that starts a scroll** on the calendar still gets touch-down feedback, as a list row in a scroll view does.
+
 ## Month
 
 `Heatmap.Month` draws one month as a calendar of dates, each day on its color from the same scale as `Heatmap.Calendar`. Use it where someone needs a particular date ("last Tuesday") rather than the shape of a whole year, such as a day picker. A month draws only the weeks it needs, five for most and four or six now and then; pass `fixedWeeks` for six every month, so the height never changes as the arrows page through. Days stretch to share the width, so give it a width (a dialog, a column) rather than letting it span a wide screen.
@@ -241,6 +258,7 @@ The month is controlled: `onMonthChange` gets the month an arrow moves to, and t
 | `theme` | `Partial<HeatmapTheme>` | See [Theme](#theme) | The month uses `cellRadius`, `gutterSize` (the gap between days), `monthLabelColor` (title and arrows), `dayLabelColor` (weekday initials), `backgroundColor`, `selectedBorderColor` and `todayBorderColor`. |
 | `valueLabel` | `string` | `'event'` | Unit in each day's accessibility label, pluralized automatically (`'October 12, 2026: 8 logs'`). |
 | `textStyle` | `StyleProp<TextStyle>` | - | Applied to the title, weekdays and dates under the month's own colors, for a font family or size. |
+| `pressable` | `PressableComponent` | React Native's `Pressable` | Draws each day's and arrow's press through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
 
 ## Grid
 
@@ -299,6 +317,7 @@ A single row draws bars `theme.cellHeight` tall (10 by default); several rows dr
 | `valueLabel` | `string` | `'event'` | Unit in the default labels, pluralized automatically (`'Logs in 12 of the last 48 hours'`). |
 | `accessibilityLabel` | `string` | Counted from the cells | The grid read as one element. With `onCellPress` each cell is labeled instead (`'October 24, 2026, 09:00: 12 logs'`). |
 | `style` | `StyleProp<ViewStyle>` | - | The grid's outer view. |
+| `pressable` | `PressableComponent` | React Native's `Pressable` | Draws each cell's press (with `onCellPress`) through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
 
 ## TypeScript
 
@@ -314,6 +333,7 @@ import Heatmap, {
   type HeatmapProps,
   type HeatmapTheme,
   type MonthProps,
+  type PressableComponent,
   type TimeBucket,
   type TimelineDataPoint,
   type TimelineGranularity,

@@ -4,6 +4,7 @@ import * as svg from 'react-native-svg'
 
 import { HeatmapCell } from '../../components/HeatmapCell'
 import type { CellMode, DataPoint, Segment } from '../../types'
+import { feedback, FeedbackPressable } from '../feedbackPressable'
 
 const baseProps = {
   date: '2026-05-17',
@@ -178,6 +179,21 @@ describe('HeatmapCell', () => {
       fireEvent.mouseDown(cell)
       fireEvent.mouseUp(cell)
       expect(springSpy).not.toHaveBeenCalled()
+    })
+
+    it('presses through an injected pressable, handing it the press-in and press-out that run the press animation', () => {
+      feedback.mockClear()
+      const springSpy = jest.spyOn(Animated, 'spring')
+      const onPress = jest.fn()
+      const { getByLabelText } = render(<HeatmapCell {...baseProps} animated onPress={onPress} pressable={FeedbackPressable} />)
+      const cell = getByLabelText('2026-05-17: 5 events')
+      fireEvent.mouseDown(cell)
+      expect(feedback).toHaveBeenCalledTimes(1)
+      expect(springSpy).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ toValue: 0.82 }))
+      fireEvent.mouseUp(cell)
+      expect(springSpy).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ toValue: 1 }))
+      fireEvent.click(cell)
+      expect(onPress).toHaveBeenCalledWith('2026-05-17', 5)
     })
   })
 

@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable as NativePressable, StyleSheet, Text, View } from 'react-native'
 
 import { weekdayInitials } from '../constants'
-import type { MonthProps } from '../types'
+import type { MonthProps, PressableComponent } from '../types'
 import { buildDataMap, computeDataRange, getAutoScaleColor, getColorForValue, getContrastTextColor, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildMonthGrid, formatDisplayDate, formatMonthTitle, getTodayString, shiftMonth } from '../utils/dateUtils'
 
@@ -13,9 +13,10 @@ interface ArrowProps {
   disabled: boolean
   color: string
   onPress: () => void
+  Pressable: PressableComponent
 }
 
-function Arrow({ direction, disabled, color, onPress }: ArrowProps) {
+function Arrow({ direction, disabled, color, onPress, Pressable }: ArrowProps) {
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole='button' accessibilityLabel={direction === 'previous' ? 'Previous month' : 'Next month'} accessibilityState={{ disabled }} style={[styles.arrow, disabled && styles.dimmed]}>
       <View style={[styles.chevron, { borderColor: color }, direction === 'previous' ? styles.chevronPrevious : styles.chevronNext]} />
@@ -25,7 +26,8 @@ function Arrow({ direction, disabled, color, onPress }: ArrowProps) {
 
 // A month of dates, each on its day's color from the same scale as .Calendar, so a particular date is easy to find
 // and the busy days still show. Only the weeks the month needs (five for most), or six with fixedWeeks.
-export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle }: MonthProps) {
+export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle, pressable }: MonthProps) {
+  const Pressable = pressable ?? NativePressable
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const dataMap = useMemo(() => buildDataMap(data), [data])
@@ -62,9 +64,9 @@ export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, sel
   return (
     <View style={{ backgroundColor }}>
       <View style={styles.header}>
-        {onMonthChange && <Arrow direction='previous' disabled={!!minDate && month <= minDate.slice(0, 7)} color={monthLabelColor} onPress={() => onMonthChange(shiftMonth(month, -1))} />}
+        {onMonthChange && <Arrow direction='previous' disabled={!!minDate && month <= minDate.slice(0, 7)} color={monthLabelColor} onPress={() => onMonthChange(shiftMonth(month, -1))} Pressable={Pressable} />}
         <Text style={[styles.title, textStyle, { color: monthLabelColor }]}>{formatMonthTitle(month)}</Text>
-        {onMonthChange && <Arrow direction='next' disabled={!!maxDate && month >= maxDate.slice(0, 7)} color={monthLabelColor} onPress={() => onMonthChange(shiftMonth(month, 1))} />}
+        {onMonthChange && <Arrow direction='next' disabled={!!maxDate && month >= maxDate.slice(0, 7)} color={monthLabelColor} onPress={() => onMonthChange(shiftMonth(month, 1))} Pressable={Pressable} />}
       </View>
       <View style={styles.week}>
         {weekdays.map((weekday, i) => (

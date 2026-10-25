@@ -66,10 +66,16 @@ type PressableProps = {
   accessibilityState?: { selected?: boolean }
 }
 
+// A touch the innermost Pressable claims stops there, as it does in React Native, rather than also reaching a Pressable around it
+// (the calendar's own, which clears its selection)
+const claim = (handler?: () => void) => (event: { stopPropagation: () => void }) => {
+  event.stopPropagation()
+  handler?.()
+}
+
 // Renders a real clickable div (accessibilityLabel -> aria-label, accessibilityState.selected ->
 // aria-selected) instead of discarding props, so tests can fire onPress/onPressIn/onPressOut via
-// fireEvent.click/mouseDown/mouseUp and query individual cells with getByLabelText. A press stops there, as a touch a Pressable
-// claims does in React Native, rather than also reaching a TouchableWithoutFeedback around it.
+// fireEvent.click/mouseDown/mouseUp and query individual cells with getByLabelText.
 const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessibilityLabel, accessibilityRole, accessibilityState }: PressableProps) =>
   React.createElement(
     'div',
@@ -78,20 +84,12 @@ const Pressable = ({ children, onPress, onPressIn, onPressOut, disabled, accessi
       'aria-label': accessibilityLabel,
       'aria-disabled': disabled || undefined,
       'aria-selected': accessibilityState?.selected || undefined,
-      onClick: disabled
-        ? undefined
-        : (event: { stopPropagation: () => void }) => {
-            event.stopPropagation()
-            onPress?.()
-          },
-      onMouseDown: disabled ? undefined : onPressIn,
-      onMouseUp: disabled ? undefined : onPressOut
+      onClick: disabled ? undefined : claim(onPress),
+      onMouseDown: disabled ? undefined : claim(onPressIn),
+      onMouseUp: disabled ? undefined : claim(onPressOut)
     },
     children
   )
-
-// Renders a real clickable div so tests can fire the wrapped onPress via fireEvent.click.
-const TouchableWithoutFeedback = ({ children, onPress }: { children?: React.ReactNode; onPress?: () => void }) => React.createElement('div', { 'data-testid': 'mock-touchable-without-feedback', onClick: onPress }, children)
 
 type ScrollEvent = {
   nativeEvent: {
@@ -122,7 +120,7 @@ const ScrollView = ({ children, onScroll }: { children?: React.ReactNode; onScro
     children
   )
 
-export { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, TouchableWithoutFeedback, View }
+export { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, View }
 
 export const Text = stub
 export const TouchableOpacity = stub

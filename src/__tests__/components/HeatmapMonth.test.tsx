@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint, MonthProps } from '../../types'
+import { feedback, FeedbackPressable } from '../feedbackPressable'
 
 const DATA: DataPoint[] = [
   { date: '2026-10-05', value: 2 },
@@ -18,6 +19,7 @@ const renderMonth = (props: Partial<MonthProps> = {}) => {
 
 beforeEach(() => {
   jest.useFakeTimers({ now: new Date(2026, 9, 23, 12) })
+  feedback.mockClear()
 })
 
 afterEach(() => {
@@ -124,6 +126,25 @@ describe('Heatmap.Month', () => {
     fireEvent.click(screen.getByLabelText('Previous month'))
     fireEvent.click(screen.getByLabelText('Next month'))
     expect(onMonthChange.mock.calls).toEqual([['2026-09'], ['2026-11']])
+  })
+
+  it('presses each day and both arrows through pressable', () => {
+    const { onDayPress, onMonthChange } = renderMonth({ pressable: FeedbackPressable })
+    for (const label of ['October 12, 2026: 8 events', 'Previous month', 'Next month']) {
+      const target = screen.getByLabelText(label)
+      fireEvent.mouseDown(target)
+      fireEvent.click(target)
+    }
+    expect(feedback).toHaveBeenCalledTimes(3)
+    expect(onDayPress).toHaveBeenCalledWith(DATA[1], '2026-10-12')
+    expect(onMonthChange.mock.calls).toEqual([['2026-09'], ['2026-11']])
+  })
+
+  it("gives pressable no press for a day or an arrow that can't be pressed", () => {
+    renderMonth({ maxDate: '2026-10-23', pressable: FeedbackPressable })
+    fireEvent.mouseDown(screen.getByLabelText('October 25, 2026: no events'))
+    fireEvent.mouseDown(screen.getByLabelText('Next month'))
+    expect(feedback).not.toHaveBeenCalled()
   })
 
   it('has no arrows without onMonthChange', () => {

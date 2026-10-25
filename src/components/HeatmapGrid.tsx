@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { Pressable as NativePressable, StyleSheet, View } from 'react-native'
 
 import type { GridProps } from '../types'
 import { mergeColorScale, mergeGridTheme } from '../utils/colorUtils'
@@ -14,7 +14,8 @@ const BAR_HIT_SLOP = { top: 8, bottom: 8 }
 // Rows and columns of cells, each a local minute, hour or day ending with the one under way, as heat from the same
 // color scale as .Calendar. One row is a pulse line for a list row or a card; 7 by 24 hours a week by hour; 7 rows of
 // days filled down columns, .Calendar's shape. Static unless onCellPress is given.
-export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, onCellPress, valueLabel = 'event', accessibilityLabel, style }: GridProps) {
+export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, onCellPress, valueLabel = 'event', accessibilityLabel, style, pressable }: GridProps) {
+  const Pressable = pressable ?? NativePressable
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeGridTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const grid = buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end: endTime ?? new Date(), colorScale, autoScale, marks, markColor: theme.markColor, pendingBefore })

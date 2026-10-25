@@ -13,4 +13,4 @@ const Heatmap = {
 }
 
 export default Heatmap
-export type { CellMode, ColorScale, DataPoint, GridProps, GridTheme, HeatmapProps, HeatmapTheme, MonthProps, ScatterProps, TimeBucket, TimelineDataPoint, TimelineGranularity, TimelineProps, TimelineTheme, TooltipData } from './types'
+export type { CellMode, ColorScale, DataPoint, GridProps, GridTheme, HeatmapProps, HeatmapTheme, MonthProps, PressableComponent, ScatterProps, TimeBucket, TimelineDataPoint, TimelineGranularity, TimelineProps, TimelineTheme, TooltipData } from './types'

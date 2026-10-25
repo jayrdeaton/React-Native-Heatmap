@@ -1,5 +1,9 @@
 import type React from 'react'
-import type { StyleProp, TextStyle, ViewStyle } from 'react-native'
+import type { PressableProps, StyleProp, TextStyle, ViewStyle } from 'react-native'
+
+/** A drop-in for React Native's Pressable, handed its props unchanged (onPress, onPressIn and onPressOut, a style callback,
+ * accessibility props), e.g. @rific/feedback-press's, which adds a haptic on touch-down. */
+export type PressableComponent = React.ComponentType<PressableProps>
 
 export interface Segment {
   color: string
@@ -124,6 +128,9 @@ export interface HeatmapProps {
   tooltipLabel?: string
   tooltipEmptyLabel?: string
   scrollEnabled?: boolean
+  /** Draws every press (each day, and a tap elsewhere that clears the selection) through this in place of React Native's
+   * Pressable, e.g. @rific/feedback-press's for a haptic on touch-down. A day's own press-in animation still runs. */
+  pressable?: PressableComponent
 }
 
 export interface MonthProps {
@@ -152,6 +159,9 @@ export interface MonthProps {
   valueLabel?: string
   /** Applied to every text (title, weekdays, dates) under the month's own colors, for a font family or size. */
   textStyle?: StyleProp<TextStyle>
+  /** Draws every press (each day and the arrows) through this in place of React Native's Pressable, e.g. @rific/feedback-press's
+   * for a haptic on touch-down. */
+  pressable?: PressableComponent
 }
 
 export interface GridTheme {
@@ -206,4 +216,7 @@ export interface GridProps {
   /** Read for the whole grid, in place of the default. With onCellPress each cell is labeled instead. */
   accessibilityLabel?: string
   style?: StyleProp<ViewStyle>
+  /** Draws each cell's press (with onCellPress) through this in place of React Native's Pressable, e.g. @rific/feedback-press's
+   * for a haptic on touch-down. */
+  pressable?: PressableComponent
 }

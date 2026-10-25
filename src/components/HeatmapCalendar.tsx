@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native'
+import { Pressable as NativePressable, ScrollView, StyleSheet, View } from 'react-native'
 
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
@@ -10,7 +10,8 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel, pressable }: HeatmapProps) {
+  const Pressable = pressable ?? NativePressable
   const [ready, setReady] = useState(false)
   const [ownSelectedDate, setOwnSelectedDate] = useState<string | null>(null)
   // A host passing selectedDate owns the selection; otherwise the calendar keeps its own
@@ -93,23 +94,23 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
 
   const gridHeight = 7 * cellPitch(theme.cellSize, theme.gutterSize) + (showMonthLabels ? theme.monthLabelHeight : 0)
 
+  // A tap elsewhere clears the selection, so it's only a press while there's one to clear: a host's pressable (a haptic on
+  // touch-down, say) then stays quiet for a tap that does nothing
   return (
-    <TouchableWithoutFeedback onPress={dismissTooltip}>
-      <View style={[styles.row, { backgroundColor: theme.backgroundColor }]}>
-        {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
+    <Pressable onPress={selectedDate ? dismissTooltip : undefined} style={[styles.row, { backgroundColor: theme.backgroundColor }]}>
+      {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
-        <View style={styles.container}>
-          <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
-            <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
-              {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-              <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={selectedDate} />)}</View>
-            </View>
-          </ScrollView>
+      <View style={styles.container}>
+        <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
+          <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
+            {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
+            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={selectedDate} pressable={pressable} />)}</View>
+          </View>
+        </ScrollView>
 
-          <Tooltip visible={tooltip !== null} data={tooltip} theme={theme} renderTooltip={renderTooltip} tooltipLabel={tooltipLabel} tooltipEmptyLabel={tooltipEmptyLabel} />
-        </View>
+        <Tooltip visible={tooltip !== null} data={tooltip} theme={theme} renderTooltip={renderTooltip} tooltipLabel={tooltipLabel} tooltipEmptyLabel={tooltipEmptyLabel} />
       </View>
-    </TouchableWithoutFeedback>
+    </Pressable>
   )
 }
 

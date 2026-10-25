@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { TimelineDataPoint } from '../../types'
+import { feedback, FeedbackPressable } from '../feedbackPressable'
 
 const END = new Date(2026, 9, 24, 9, 41)
 const SPACED = { marginTop: 12 }
@@ -23,6 +24,19 @@ describe('Heatmap.Grid', () => {
     fireEvent.click(screen.getByLabelText('October 24, 2026, 07:00: 4 logs'))
     expect(onCellPress).toHaveBeenCalledWith({ startTime: new Date(2026, 9, 24, 7), endTime: new Date(2026, 9, 24, 8), granularity: 'hour', value: 4 })
     expect(screen.getByLabelText('October 24, 2026, 06:00: no logs')).toBeTruthy()
+  })
+
+  it('presses each cell through pressable, and still takes no touches without onCellPress', () => {
+    feedback.mockClear()
+    const onCellPress = jest.fn()
+    const { rerender } = render(<Heatmap.Grid data={DATA} columns={4} granularity='hour' endTime={END} onCellPress={onCellPress} valueLabel='log' pressable={FeedbackPressable} />)
+    const cell = screen.getByLabelText('October 24, 2026, 07:00: 4 logs')
+    fireEvent.mouseDown(cell)
+    fireEvent.click(cell)
+    expect(feedback).toHaveBeenCalledTimes(1)
+    expect(onCellPress).toHaveBeenCalledTimes(1)
+    rerender(<Heatmap.Grid data={DATA} columns={4} granularity='hour' endTime={END} pressable={FeedbackPressable} />)
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
 
   it("leaves a week of hours' cells after the one under way blank, not buttons", () => {

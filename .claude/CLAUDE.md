@@ -41,14 +41,16 @@ npm run release:patch   # npm version patch && npm run release (or release:minor
 src/
   index.ts                        - public exports: default `Heatmap` object (.Calendar/.Grid/.Month/.Scatter/.Timeline) + type-only exports
   types.ts                        - every prop/data type: DataPoint, Segment, ColorScale, HeatmapTheme, HeatmapProps, MonthProps, GridProps, GridTheme, ScatterProps,
-                                     TimelineDataPoint, TimeBucket, TimelineTheme, TimelineProps, TooltipData, CellMode, TimelineGranularity
+                                     TimelineDataPoint, TimeBucket, TimelineTheme, TimelineProps, TooltipData, CellMode, TimelineGranularity,
+                                     PressableComponent (the injected pressable's type)
   constants/
     index.ts                      - month/day label arrays, weekday initials, default light/dark accent colors, default light/dark HeatmapTheme
                                      and GridTheme objects
   components/
     HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, month/day labels, the selected day
                                      (its own, or the host's with selectedDate, taps then only reported) and the tooltip drawn from it;
-                                     draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing)
+                                     draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing);
+                                     the whole calendar is a Pressable (pressable or React Native's) that clears the selection
     HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority),
                                      press/pulse/data-fade animations via RN's built-in Animated API
     WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state
@@ -76,12 +78,14 @@ src/
     layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
                                      rows, month labels, each cell's own margins)
   __mocks__/
-    react-native.ts                - jest mock: View fires onLayout once; Pressable/TouchableWithoutFeedback/ScrollView render as real
-                                     clickable/scrollable divs (Pressable's accessibilityState.selected as aria-selected); Animated/Easing/StyleSheet/PanResponder/Platform stubs
+    react-native.ts                - jest mock: View fires onLayout once; Pressable/ScrollView render as real clickable/scrollable divs
+                                     (Pressable's accessibilityState.selected as aria-selected; a press stops at the innermost one, as React
+                                     Native's responder does); Animated/Easing/StyleSheet/PanResponder/Platform stubs
     react-native-svg.ts             - jest mock: every SVG primitive stubbed to a passthrough or null
   __tests__/
     components/*.test.tsx          - HeatmapCalendar, HeatmapCell, HeatmapGrid, HeatmapMonth, HeatmapScatter, HeatmapTimeline, Tooltip,
                                      WeekColumn
+    feedbackPressable.tsx          - not a suite: a stand-in for @rific/feedback-press's Pressable, for the pressable tests
     utils/*.test.ts                 - colorUtils, dateUtils, timeUtils, layoutUtils, gridUtils
 ```
 
@@ -121,11 +125,21 @@ import Heatmap, {
 
 No optional peer dependencies.
 
+## Injected pressable (2026-10-25)
+
+`pressable` on `.Calendar`, `.Month` and `.Grid` (a `PressableComponent`, `React.ComponentType<PressableProps>`) replaces React Native's `Pressable` for every press they draw, so a host can tap through `@rific/feedback-press`'s `Pressable` (a `selection` haptic on touch-down, honoring its provider's toggle), as every other tap in Jay's apps does. Lumber had been calling `useVibration().selection()` in `onDayPress`/`onMonthChange` instead, which fires on release, and gave a tap elsewhere on the calendar nothing. Nothing depends on feedback-press; it's injected, as `@rific/toaster` injects Paper.
+
+- **Per component, not a provider:** the package has no provider, and a host passes it where it presses. Each component resolves `pressable ?? NativePressable` into a local `Pressable`; `.Calendar` hands it down through `WeekColumn` to `HeatmapCell`, and `.Month` to its `Arrow`.
+- **The cell's press spring composes:** `HeatmapCell` hands its own `onPressIn`/`onPressOut` to the injected component, which calls them after its own work, so the animation and the haptic both run. Its test checks both.
+- **The tap elsewhere:** `.Calendar`'s outer `TouchableWithoutFeedback` became a `Pressable` (the injected one or React Native's) laid out as the row it wrapped, with `onPress` only while a day is selected. A tap with nothing selected did nothing before either, and with feedback-press a press with no `onPress` stays silent, so that tap gives no haptic. Both are accessible by default, as the wrapper was; the calendar's tests find it as the container's first element (`outside`).
+- **The mock's Pressable stops a press at the innermost one** (`claim`, on click, mouse down and mouse up), as React Native's responder hands a touch to the deepest Pressable, so a day's press-in doesn't also reach the calendar's.
+- Tests: one per component (`pressable` blocks and cases in the Calendar, Cell, Month and Grid suites), through `src/__tests__/feedbackPressable.tsx`, which notes a press-in when the press has `onPress` or `onLongPress`, as feedback-press's gate does, then calls through.
+
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 261 tests across 13 suites (8 component suites + 5 util suites), all passing as of this writing
+- 270 tests across 13 suites (8 component suites + 5 util suites), all passing as of this writing
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - `.Grid` is the same: without `onCellPress` it's only Views, which the mock renders as nothing, so its windows, alignment, colors, pending cells, marks and labels are pinned in gridUtils.test.ts and the component tests press cells made buttons. The tests build times with local `Date`s (`new Date(2026, 9, 24, 9)`), so they pass in any time zone; checked on 2026-10-24 under `TZ=` Asia/Bangkok, Asia/Kolkata (half hour), America/New_York, Australia/Lord_Howe (half-hour daylight saving) and UTC
 - One bucketing, on the device's clock: `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above

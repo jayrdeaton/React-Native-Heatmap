@@ -1,8 +1,8 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native'
+import { Animated, Easing, Pressable as NativePressable, StyleSheet, View } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
-import type { CellMode, DataPoint, Segment } from '../types'
+import type { CellMode, DataPoint, PressableComponent, Segment } from '../types'
 import { cellPadding, cellPitch } from '../utils/layoutUtils'
 
 interface HeatmapCellProps {
@@ -26,6 +26,7 @@ interface HeatmapCellProps {
   selectedBorderColor: string
   dataFadeDelay?: number
   animationDuration?: number
+  pressable?: PressableComponent
 }
 
 function getDotPositions(n: number, size: number): { x: number; y: number }[] {
@@ -39,7 +40,9 @@ function getDotPositions(n: number, size: number): { x: number; y: number }[] {
   }))
 }
 
-function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350 }: HeatmapCellProps) {
+function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350, pressable }: HeatmapCellProps) {
+  // A host's pressable (a haptic on touch-down, say) is handed the cell's own onPressIn/onPressOut, so it adds to the press animation
+  const Pressable = pressable ?? NativePressable
   const [pressScale] = useState(() => new Animated.Value(1))
   const [pulseScale] = useState(() => new Animated.Value(1))
   // Top data layer: starts at 1 if cell has data on mount, 0 if not
