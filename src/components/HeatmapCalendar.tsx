@@ -10,9 +10,12 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
+export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel }: HeatmapProps) {
   const [ready, setReady] = useState(false)
-  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const [ownSelectedDate, setOwnSelectedDate] = useState<string | null>(null)
+  // A host passing selectedDate owns the selection; otherwise the calendar keeps its own
+  const controlled = selectedDateProp !== undefined
+  const selectedDate = controlled ? selectedDateProp : ownSelectedDate
 
   // Draws the grid after the first idle moment so mounting stays cheap. requestIdleCallback
   // replaces InteractionManager (removed from React Native 0.88); Safari on web doesn't ship
@@ -52,29 +55,41 @@ export function HeatmapCalendar({ data, startDate: startDateProp, endDate: endDa
     [onEndReached, onEndReachedThreshold]
   )
 
-  const handleCellPress = useCallback(
-    (date: string, value: number) => {
-      const point = dataMap.get(date) ?? null
-      const tooltipData: TooltipData = { date, value, metadata: point?.metadata }
-      setTooltip((prev) => (prev?.date === date ? null : tooltipData))
-      onDayPress?.(point, date)
+  // The tooltip shows the selected day as the data has it now, so it follows new data and a host's selection alike
+  const tooltip = useMemo<TooltipData | null>(() => {
+    if (!selectedDate) return null
+    const point = dataMap.get(selectedDate)
+    return { date: selectedDate, value: point?.value ?? 0, metadata: point?.metadata }
+  }, [selectedDate, dataMap])
+
+  // A tap asks for a day (or null). Controlled, the host hears it and decides; otherwise the calendar takes it
+  const select = useCallback(
+    (date: string | null) => {
+      if (date === selectedDate) return
+      if (controlled) onSelectionChange?.(date)
+      else setOwnSelectedDate(date)
     },
-    [dataMap, onDayPress]
+    [controlled, selectedDate, onSelectionChange]
   )
 
-  const dismissTooltip = useCallback(() => {
-    setTooltip(null)
-  }, [])
+  const handleCellPress = useCallback(
+    (date: string) => {
+      select(selectedDate === date ? null : date)
+      onDayPress?.(dataMap.get(date) ?? null, date)
+    },
+    [select, selectedDate, dataMap, onDayPress]
+  )
 
-  // Reported from the state itself, so every way the selection changes (a tap, a second tap, a tap elsewhere) is
-  // told once, and a host passing a new callback each render isn't told again
-  const selectedDate = tooltip?.date ?? null
+  const dismissTooltip = useCallback(() => select(null), [select])
+
+  // Uncontrolled, the selection is reported from the state itself, so every way it changes (a tap, a second tap, a tap
+  // elsewhere) is told once, and a host passing a new callback each render isn't told again
   const reportedDateRef = useRef<string | null>(null)
   useEffect(() => {
-    if (selectedDate === reportedDateRef.current) return
-    reportedDateRef.current = selectedDate
-    onSelectionChange?.(selectedDate)
-  }, [selectedDate, onSelectionChange])
+    if (controlled || ownSelectedDate === reportedDateRef.current) return
+    reportedDateRef.current = ownSelectedDate
+    onSelectionChange?.(ownSelectedDate)
+  }, [controlled, ownSelectedDate, onSelectionChange])
 
   const gridHeight = 7 * cellPitch(theme.cellSize, theme.gutterSize) + (showMonthLabels ? theme.monthLabelHeight : 0)
 

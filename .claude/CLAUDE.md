@@ -46,7 +46,8 @@ src/
     index.ts                      - month/day label arrays, weekday initials, default light/dark accent colors, default light/dark HeatmapTheme
                                      and GridTheme objects
   components/
-    HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, tooltip state, month/day labels;
+    HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, month/day labels, the selected day
+                                     (its own, or the host's with selectedDate, taps then only reported) and the tooltip drawn from it;
                                      draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing)
     HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority),
                                      press/pulse/data-fade animations via RN's built-in Animated API

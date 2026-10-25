@@ -57,7 +57,8 @@ export default function App() {
 | `animated` | `boolean` | `false` | Enable all animations (load ripple, today pulse, press spring). |
 | `scrollEnabled` | `boolean` | `true` | Enable or disable horizontal scrolling. |
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a cell is tapped. |
-| `onSelectionChange` | `(date: string \| null) => void` | - | Called when the selected day (outlined, tooltip open) changes, with `null` once a second tap or a tap elsewhere clears it. For showing something about the selected day. |
+| `onSelectionChange` | `(date: string \| null) => void` | - | Called when the selected day (outlined, tooltip open) changes, with `null` once a second tap or a tap elsewhere clears it. For showing something about the selected day. With `selectedDate` set, it's the day a tap asks for. |
+| `selectedDate` | `string \| null` | - | The selected day, `YYYY-MM-DD`, or `null` for none. Set, the calendar follows it instead of its own taps (which only report through `onSelectionChange`), so you can clear or move the selection from outside, say with a clear button next to what you show for the day. Leave it undefined and the calendar keeps its own. |
 | `onEndReached` | `() => void` | - | Called when the user scrolls near the right edge. Use for infinite scroll. |
 | `onEndReachedThreshold` | `number` | `0.1` | Fraction of total width from the right edge that triggers `onEndReached`. |
 | `renderTooltip` | `(data: TooltipData) => ReactNode` | - | Replace the default tooltip with a custom component. |

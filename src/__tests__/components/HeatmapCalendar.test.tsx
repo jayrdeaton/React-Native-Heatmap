@@ -364,6 +364,44 @@ describe('Heatmap.Calendar', () => {
     })
   })
 
+  describe('selectedDate', () => {
+    it('shows the day the host selects, and clears it when the host does', async () => {
+      const { container, rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate='2026-02-20' />)
+      await screen.findByLabelText('2026-02-20: 12 events')
+      expect(container.textContent).toContain('12 events')
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate={null} />)
+      expect(container.textContent).not.toContain('12 events')
+    })
+
+    it('reports taps without taking them, leaving the host to decide', async () => {
+      const onSelectionChange = jest.fn()
+      const { container } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate={null} onSelectionChange={onSelectionChange} />)
+      fireEvent.click(await screen.findByLabelText('2026-01-15: 3 events'))
+      expect(onSelectionChange).toHaveBeenLastCalledWith('2026-01-15')
+      expect(container.textContent).not.toContain('3 events')
+    })
+
+    it('asks for null on a second tap and on a tap elsewhere, and says nothing when nothing would change', async () => {
+      const onSelectionChange = jest.fn()
+      const { getByTestId, rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate='2026-01-15' onSelectionChange={onSelectionChange} />)
+      fireEvent.click(await screen.findByLabelText('2026-01-15: 3 events'))
+      expect(onSelectionChange).toHaveBeenLastCalledWith(null)
+      fireEvent.click(getByTestId('mock-touchable-without-feedback'))
+      expect(onSelectionChange).toHaveBeenCalledTimes(2)
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate={null} onSelectionChange={onSelectionChange} />)
+      fireEvent.click(getByTestId('mock-touchable-without-feedback'))
+      expect(onSelectionChange).toHaveBeenCalledTimes(2)
+    })
+
+    it("isn't reported back when the host changes it", async () => {
+      const onSelectionChange = jest.fn()
+      const { rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate='2026-01-15' onSelectionChange={onSelectionChange} />)
+      await screen.findByLabelText('2026-01-15: 3 events')
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate={null} onSelectionChange={onSelectionChange} />)
+      expect(onSelectionChange).not.toHaveBeenCalled()
+    })
+  })
+
   describe('dismissTooltip', () => {
     it('runs without throwing when the outer touchable wrapper is pressed directly', async () => {
       const { container, getByTestId } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} />)

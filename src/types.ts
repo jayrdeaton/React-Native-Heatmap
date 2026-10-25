@@ -107,8 +107,13 @@ export interface HeatmapProps {
   showDayLabels?: boolean
   onDayPress?: (day: DataPoint | null, date: string) => void
   /** The selected day (outlined, its tooltip open) whenever it changes, or null once it clears: a second tap on it, or a
-   * tap elsewhere on the calendar. onDayPress only reports taps, so a host showing something for the selected day needs this. */
+   * tap elsewhere on the calendar. onDayPress only reports taps, so a host showing something for the selected day needs this.
+   * With selectedDate set, it's the day a tap asks for, and the host decides. */
   onSelectionChange?: (date: string | null) => void
+  /** The selected day (YYYY-MM-DD), or null for none. Set, the calendar follows it rather than its own taps, so a host can
+   * clear or move the selection from outside (a clear button beside what it shows for the day); taps only report through
+   * onSelectionChange. Left undefined, the calendar keeps its own selection. */
+  selectedDate?: string | null
   renderTooltip?: (data: TooltipData) => React.ReactNode
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean
