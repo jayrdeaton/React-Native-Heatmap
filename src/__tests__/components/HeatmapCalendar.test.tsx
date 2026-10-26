@@ -224,6 +224,51 @@ describe('Heatmap.Calendar', () => {
     })
   })
 
+  // A cell's onPress never changes, so only the cells a tap changes (their outline) draw again
+  describe('redrawing on a tap', () => {
+    const drawnDates = (renderCell: jest.Mock) => renderCell.mock.calls.map(([, date]) => date).sort()
+
+    it('redraws only the days whose outline changes', async () => {
+      const renderCell = jest.fn((_point: DataPoint | null, _date: string) => null)
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} onDayPress={jest.fn()} />)
+      const january = await screen.findByLabelText('2026-01-15: 3 events')
+
+      renderCell.mockClear()
+      fireEvent.click(january)
+      expect(drawnDates(renderCell)).toEqual(['2026-01-15'])
+
+      renderCell.mockClear()
+      fireEvent.click(screen.getByLabelText('2026-02-20: 12 events'))
+      expect(drawnDates(renderCell)).toEqual(['2026-01-15', '2026-02-20'])
+    })
+
+    it('redraws nothing for new callbacks, and a tap reaches the newest ones', async () => {
+      const renderCell = jest.fn((_point: DataPoint | null, _date: string) => null)
+      const firstOnDayPress = jest.fn()
+      const { rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} onDayPress={firstOnDayPress} />)
+      await screen.findByLabelText('2026-01-15: 3 events')
+
+      renderCell.mockClear()
+      const onDayPress = jest.fn()
+      const onSelectionChange = jest.fn()
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} onDayPress={onDayPress} onSelectionChange={onSelectionChange} />)
+      expect(renderCell).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByLabelText('2026-01-15: 3 events'))
+      expect(onDayPress).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-01-15' }), '2026-01-15')
+      expect(onSelectionChange).toHaveBeenCalledWith('2026-01-15')
+      expect(firstOnDayPress).not.toHaveBeenCalled()
+    })
+
+    it('reads the selection at the tap, so a second tap on a host-selected day clears it', async () => {
+      const onSelectionChange = jest.fn()
+      const { rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate={null} onSelectionChange={onSelectionChange} />)
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} selectedDate='2026-02-20' onSelectionChange={onSelectionChange} />)
+      fireEvent.click(await screen.findByLabelText('2026-02-20: 12 events'))
+      expect(onSelectionChange).toHaveBeenLastCalledWith(null)
+    })
+  })
+
   // The grid waits for the first idle moment: requestIdleCallback where the runtime has it
   // (React Native, Chrome), a zero-delay timeout where it doesn't (Safari on web).
   describe('deferred grid render', () => {

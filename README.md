@@ -114,7 +114,9 @@ A host can make its dates and data afresh on every render without memoizing them
 
 `Heatmap.Grid` keeps nothing between renders, so it has nothing to compare.
 
-Other props (`colorScale`, `theme`, `renderCell`, callbacks) are compared as React compares them, by identity. A new `colorScale` or `theme` each render only reworks each week's colors, but a new `renderCell` redraws every cell, so keep it stable.
+`onDayPress` and `onSelectionChange` can be new functions each render too: a tap calls whichever is newest, and nothing redraws for them. A tap itself redraws only the days whose outline changes.
+
+Other props (`colorScale`, `theme`, `renderCell`) are compared as React compares them, by identity. A new `colorScale` or `theme` each render only reworks each week's colors, but a new `renderCell` redraws every cell, so keep it stable.
 
 ## Infinite scroll
 

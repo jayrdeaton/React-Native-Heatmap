@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Pressable as NativePressable, ScrollView, StyleSheet, View } from 'react-native'
 
 import { useStable } from '../hooks/useStable'
@@ -76,13 +76,18 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
     [controlled, selectedDate, onSelectionChange]
   )
 
-  const handleCellPress = useCallback(
-    (date: string) => {
-      select(selectedDate === date ? null : date)
-      onDayPress?.(dataMap.get(date) ?? null, date)
-    },
-    [select, selectedDate, dataMap, onDayPress]
-  )
+  // Every cell's press handler, which never changes: it reads the selection, data and callbacks as they are at the tap.
+  // One that changed with them handed every cell a new onPress, past HeatmapCell's memo, so a tap (or a host's inline
+  // onDayPress) redrew every cell where only the outlined ones change
+  const latestRef = useRef({ select, selectedDate, dataMap, onDayPress })
+  useLayoutEffect(() => {
+    latestRef.current = { select, selectedDate, dataMap, onDayPress }
+  })
+  const handleCellPress = useCallback((date: string) => {
+    const latest = latestRef.current
+    latest.select(latest.selectedDate === date ? null : date)
+    latest.onDayPress?.(latest.dataMap.get(date) ?? null, date)
+  }, [])
 
   const dismissTooltip = useCallback(() => select(null), [select])
 
