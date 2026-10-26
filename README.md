@@ -43,9 +43,9 @@ export default function App() {
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `data` | `DataPoint[]` | required | Array of `{ date, value }` objects. `date` is `YYYY-MM-DD`. |
-| `startDate` | `Date` | 1 year ago | First day shown on the grid. |
-| `endDate` | `Date` | Today | Last day shown on the grid. |
+| `data` | `DataPoint[]` | required | Array of `{ date, value }` objects. `date` is `YYYY-MM-DD`. Compared by what it says, so data mapped afresh each render keeps the cells already drawn (see [Props made each render](#props-made-each-render)). |
+| `startDate` | `Date` | 1 year ago | First day shown on the grid. Only its day counts, not its time. |
+| `endDate` | `Date` | Today | Last day shown on the grid, whatever its time. `endDate={new Date()}` is fine: a new Date on the same day doesn't rebuild the grid. |
 | `cellMode` | `'solid' \| 'gradient' \| 'density' \| 'stacked' \| 'dots' \| 'priority'` | `'solid'` | Visual style of each cell. |
 | `colorScale` | `Partial<ColorScale>` | GitHub greens | Thresholds and colors used to shade cells. |
 | `color` | `string` | - | Single accent color. Overrides the default color scale. |
@@ -100,10 +100,21 @@ Pass `animated` to enable all animations. No extra dependencies - uses the built
 ```
 
 - **Load ripple**: cells fade and scale in on mount, radiating outward from today's column.
-- **Today pulse**: the current day cell breathes with a looping scale animation. It's also outlined in `todayBorderColor`; set that to `'transparent'` to mark today by the pulse alone. The day whose tooltip is open is outlined in `selectedBorderColor`, today included.
+- **Today pulse**: the current day cell breathes with a looping scale animation, natively on iOS and Android and as a CSS animation on web, so it costs no JavaScript there. It's also outlined in `todayBorderColor`; set that to `'transparent'` to mark today by the pulse alone. The day whose tooltip is open is outlined in `selectedBorderColor`, today included.
 - **Press spring**: cells scale down on press and spring back on release.
 
 The current day always receives a border indicator regardless of the `animated` prop.
+
+## Props made each render
+
+A host can make its dates and data afresh on every render without memoizing them, so `endDate={new Date()}` or `data={rows.map(toPoint)}` stays cheap. `Heatmap.Calendar` and `Heatmap.Month` compare them by what they say rather than by identity:
+
+- `startDate` and `endDate` by their days, so any two Dates on the same days draw the same grid.
+- `data` point by point, in order: `date`, `value`, `color`, each segment's `color`, `value` and `weight`, and `metadata` one level deep. Equal data keeps what was drawn from it; metadata holding objects made afresh counts as changed.
+
+`Heatmap.Grid` keeps nothing between renders, so it has nothing to compare.
+
+Other props (`colorScale`, `theme`, `renderCell`, callbacks) are compared as React compares them, by identity. A new `colorScale` or `theme` each render only reworks each week's colors, but a new `renderCell` redraws every cell, so keep it stable.
 
 ## Infinite scroll
 

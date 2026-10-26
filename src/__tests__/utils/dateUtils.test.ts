@@ -75,6 +75,33 @@ describe('buildWeekGrid', () => {
     expect(allDays[0]).toBe('2026-01-01')
     expect(allDays[30]).toBe('2026-01-31')
   })
+
+  it('counts whole days, so any times on the same days give the same grid', () => {
+    const midnights = buildWeekGrid(new Date(2026, 0, 10), new Date(2026, 0, 15))
+    expect(buildWeekGrid(new Date(2026, 0, 10, 23, 59), new Date(2026, 0, 15, 0, 1))).toEqual(midnights)
+    expect(buildWeekGrid(new Date(2026, 0, 10, 6), new Date(2026, 0, 15, 22))).toEqual(midnights)
+  })
+
+  it('keeps the end day when the start is later in its day than the end', () => {
+    const days = buildWeekGrid(new Date(2026, 0, 10, 18), new Date(2026, 0, 15, 9))
+      .flat()
+      .filter((d: string) => d !== '')
+    expect(days).toEqual(['2026-01-10', '2026-01-11', '2026-01-12', '2026-01-13', '2026-01-14', '2026-01-15'])
+  })
+
+  // Only bites in a time zone with daylight saving, so run the suite under TZ= to check: March and October to November
+  // hold North America's, Europe's and Australia's changes, September Chile's, where midnight itself is skipped
+  it.each([
+    ['March', new Date(2026, 2, 1), new Date(2026, 2, 31)],
+    ['September', new Date(2026, 8, 1), new Date(2026, 8, 30)],
+    ['October to November', new Date(2026, 9, 1), new Date(2026, 10, 30)]
+  ])('has every day once across the daylight saving changes in %s', (_, start, end) => {
+    const days = buildWeekGrid(start, end)
+      .flat()
+      .filter((d: string) => d !== '')
+    const expected = Array.from({ length: Math.round((end.getTime() - start.getTime()) / 86400000) + 1 }, (__, i) => toDateString(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)))
+    expect(days).toEqual(expected)
+  })
 })
 
 describe('getMonthLabels', () => {

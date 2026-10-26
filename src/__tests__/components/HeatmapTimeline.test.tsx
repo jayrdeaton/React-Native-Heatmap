@@ -3,6 +3,7 @@ import { PanResponder } from 'react-native'
 
 import Heatmap from '../../index'
 import type { TimeBucket, TimelineDataPoint } from '../../types'
+import * as timeUtils from '../../utils/timeUtils'
 
 const HOUR = 3600000
 
@@ -46,6 +47,22 @@ describe('Heatmap.Timeline', () => {
     expect(() => {
       render(<Heatmap.Timeline data={[]} />)
     }).not.toThrow()
+  })
+
+  it('works out its bounds and buckets once for new Dates at the same moments and data made afresh', () => {
+    const infer = jest.spyOn(timeUtils, 'inferTimeBounds')
+    const buckets = jest.spyOn(timeUtils, 'buildTimeDataMap')
+    const data = () => SAMPLE_DATA.map((point) => ({ ...point }))
+    const { rerender } = render(<Heatmap.Timeline data={data()} startTime={new Date(FIXED_START)} endTime={new Date(FIXED_END)} />)
+    rerender(<Heatmap.Timeline data={data()} startTime={new Date(FIXED_START)} endTime={new Date(FIXED_END)} />)
+    expect(infer).toHaveBeenCalledTimes(1)
+    // One map each for days, hours and minutes
+    expect(buckets).toHaveBeenCalledTimes(3)
+    rerender(<Heatmap.Timeline data={data()} startTime={new Date(FIXED_START)} endTime={new Date(BASE + HOUR * 72)} />)
+    expect(infer).toHaveBeenCalledTimes(2)
+    expect(buckets).toHaveBeenCalledTimes(3)
+    infer.mockRestore()
+    buckets.mockRestore()
   })
 
   it('infers bounds from data when no startTime/endTime provided', () => {

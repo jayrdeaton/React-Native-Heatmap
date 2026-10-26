@@ -52,7 +52,8 @@ src/
                                      draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing);
                                      the whole calendar is a Pressable (pressable or React Native's) that clears the selection
     HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority),
-                                     press/pulse/data-fade animations via RN's built-in Animated API
+                                     press/pulse/data-fade animations via RN's built-in Animated API, except today's pulse on web,
+                                     a CSS keyframe animation on a view around the cell
     WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state
     DayLabels.tsx                  - Mon/Wed/Fri row labels
     MonthLabels.tsx                - month-name labels positioned by week index
@@ -66,6 +67,9 @@ src/
     HeatmapScatter.tsx             - public .Scatter (experimental, see EXPERIMENTAL.md): deterministic jittered dot swarm from segments
     HeatmapTimeline.tsx            - public .Timeline (experimental, see EXPERIMENTAL.md): pan/pinch-zoomable bucketed strip,
                                      hand-rolled PanResponder built once in a run-once layout effect (see in-file comments on why)
+  hooks/
+    useStable.ts                   - the last value handed in while each new one is equal to it (kept in state), so data a host
+                                     makes afresh each render keeps what's memoized on it
   utils/
     colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging,
                                      near-black/near-white text by WCAG contrast (getContrastTextColor), GridTheme merging
@@ -75,6 +79,7 @@ src/
                                      time-label formatting for .Timeline, bucket labels for .Grid
     gridUtils.ts                   - .Grid's cells (window, alignment, blanks, fill, pending, mark) and its accessibility labels,
                                      kept pure so the tests can read the colors the mocks don't render
+    equalityUtils.ts               - sameDataPoints/sameTimelinePoints: whether two data arrays say the same thing, for useStable
     layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
                                      rows, month labels, each cell's own margins)
   __mocks__/
@@ -86,7 +91,7 @@ src/
     components/*.test.tsx          - HeatmapCalendar, HeatmapCell, HeatmapGrid, HeatmapMonth, HeatmapScatter, HeatmapTimeline, Tooltip,
                                      WeekColumn
     feedbackPressable.tsx          - not a suite: a stand-in for @rific/feedback-press's Pressable, for the pressable tests
-    utils/*.test.ts                 - colorUtils, dateUtils, timeUtils, layoutUtils, gridUtils
+    utils/*.test.ts                 - colorUtils, dateUtils, equalityUtils, timeUtils, layoutUtils, gridUtils
 ```
 
 `EXPERIMENTAL.md` documents `Scatter`/`Timeline`: exported today but intentionally left out of `README.md` and treated as unstable (no major-bump guarantee) until promoted. It isn't part of the published npm package itself - only `dist`, `src` (minus `__tests__`/`__mocks__`), `README.md`, and `LICENSE` ship (see `package.json`'s `files` array).
@@ -135,11 +140,21 @@ No optional peer dependencies.
 - **The mock's Pressable stops a press at the innermost one** (`claim`, on click, mouse down and mouse up), as React Native's responder hands a touch to the deepest Pressable, so a day's press-in doesn't also reach the calendar's.
 - Tests: one per component (`pressable` blocks and cases in the Calendar, Cell, Month and Grid suites), through `src/__tests__/feedbackPressable.tsx`, which notes a press-in when the press has `onPress` or `onLongPress`, as feedback-press's gate does, then calls through.
 
+## Values made each render, and today's pulse on web (2026-10-26)
+
+Found profiling Lumber's desktop app, where the React Compiler dropped a hand-written `useMemo` around a Date in Lumber's `LogHeatmap` and the heatmap re-rendered about 18 times a second at idle. Lumber passes stable dates now; these keep any host safe.
+
+- **Dates are keyed on values:** `.Calendar`'s grid memo is keyed on `startDate`'s and `endDate`'s days (`toDateString`), so `endDate={new Date()}` doesn't rebuild the grid and every column each render. `buildWeekGrid` counts whole days to match: it walks at noon and compares `YYYY-MM-DD` strings. Before, it compared the Dates themselves, so a start later in its day than the end dropped the end day, and in a zone that skips midnight (Chile's September change) the cursor slid to 01:00 and dropped the range's last day. `.Scatter` and `.Timeline` key on `getTime()`, since their output depends on the exact moment.
+- **Data is compared by what it says:** `useStable(data, sameDataPoints)` (or `sameTimelinePoints`) in `.Calendar`, `.Month`, `.Scatter` and `.Timeline`. In `.Calendar` a fresh-but-equal array used to give every cell a new `dataPoint` and `segments`, redrawing each SVG cell through `HeatmapCell`'s memo. Metadata is compared one level deep. `colorScale`, `theme` and `renderCell` stay identity-compared: a new `colorScale` or `theme` only re-renders the week columns (the cells take primitives), and a function can't be compared by value. `.Grid` memoizes nothing.
+- **Today's pulse on web is CSS:** react-native-web runs `useNativeDriver` animations in JavaScript, so `Animated.loop` committed every frame while today was on screen (60 a second in an offscreen Electron window at 60fps). On web (`Platform.OS`, read at render so the tests can switch it) the cell draws inside a `View` with `animationKeyframes` (1 to 1.2 and back), `cubic-bezier(0.37, 0, 0.63, 1)` (Easing.inOut(Easing.sin) to within 0.2%) on each half, and 5 animationDurations a pulse, as the native loop's two 2.5 timings (`PULSE_HALF`). It's a view of its own because a CSS animation of `transform` overrides the press spring's transform on the same view.
+- **Keyframe transforms must be CSS strings:** react-native-web 0.21 turns a `transform` array into CSS only at a style's top level (`preprocess`); inside `animationKeyframes` an array becomes a declaration the browser drops, so every step comes out empty and nothing moves. The first version did this; the jest mock can't catch it. It was caught by bundling a page with esbuild against Lumber's react-native-web (react-native-svg swapped for a DOM `<svg>` shim, since its web build imports native modules) and loading it offscreen in Lumber-Desktop's Electron: with strings, the keyframes read `scale(1)`/`scale(1.2)`, the wrapper's computed transform moved through 1.19, 1.09 and 1.01, and React made 0 commits a second at idle.
+- **Tests:** the cell suite spies on the mocked `View` and `Animated.View` (`jest.spyOn(ReactNative, 'View')`) to read the pulse's style and the transforms; the date and data tests spy on `buildWeekGrid`, `buildDataMap`, `parseDate`, `inferTimeBounds` and `buildTimeDataMap`. Each new test fails on the code before this change. `buildWeekGrid`'s daylight saving test only bites under a `TZ=` with daylight saving; it passed under America/New_York, America/Santiago, Europe/London, Australia/Lord_Howe, Asia/Bangkok and UTC.
+
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 270 tests across 13 suites (8 component suites + 5 util suites), all passing as of this writing
+- 306 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - `.Grid` is the same: without `onCellPress` it's only Views, which the mock renders as nothing, so its windows, alignment, colors, pending cells, marks and labels are pinned in gridUtils.test.ts and the component tests press cells made buttons. The tests build times with local `Date`s (`new Date(2026, 9, 24, 9)`), so they pass in any time zone; checked on 2026-10-24 under `TZ=` Asia/Bangkok, Asia/Kolkata (half hour), America/New_York, Australia/Lord_Howe (half-hour daylight saving) and UTC
 - One bucketing, on the device's clock: `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above

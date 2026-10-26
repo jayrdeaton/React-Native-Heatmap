@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Pressable as NativePressable, StyleSheet, View } from 'react-native'
+import { Animated, Easing, Platform, Pressable as NativePressable, StyleSheet, View, type ViewStyle } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 import type { CellMode, DataPoint, PressableComponent, Segment } from '../types'
@@ -28,6 +28,9 @@ interface HeatmapCellProps {
   animationDuration?: number
   pressable?: PressableComponent
 }
+
+// Each half of today's pulse, up to 1.2 and back, takes this many animationDurations
+const PULSE_HALF = 2.5
 
 function getDotPositions(n: number, size: number): { x: number; y: number }[] {
   const cols = Math.ceil(Math.sqrt(n))
@@ -60,18 +63,24 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
     }
   }, [value, isAnimated, dataFadeAnim, animationDuration, dataFadeDelay])
 
+  // Today's pulse runs natively on iOS and Android. react-native-web can't drive Animated natively, so there it would
+  // run from JavaScript, a React commit every frame for as long as today is on screen; a CSS animation of the same
+  // scale runs on the compositor instead (styles.pulse)
+  const pulsing = isToday && isAnimated
+  const cssPulse = pulsing && Platform.OS === 'web'
+
   useEffect(() => {
-    if (!isToday || !isAnimated) {
+    if (!pulsing || cssPulse) {
       pulseScale.setValue(1)
       return
     }
-    const pulse = Animated.loop(Animated.sequence([Animated.timing(pulseScale, { toValue: 1.2, duration: animationDuration * 2.5, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }), Animated.timing(pulseScale, { toValue: 1, duration: animationDuration * 2.5, useNativeDriver: true, easing: Easing.inOut(Easing.sin) })]))
+    const pulse = Animated.loop(Animated.sequence([Animated.timing(pulseScale, { toValue: 1.2, duration: animationDuration * PULSE_HALF, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }), Animated.timing(pulseScale, { toValue: 1, duration: animationDuration * PULSE_HALF, useNativeDriver: true, easing: Easing.inOut(Easing.sin) })]))
     pulse.start()
     return () => {
       pulse.stop()
       pulseScale.setValue(1)
     }
-  }, [isToday, isAnimated, pulseScale, animationDuration])
+  }, [pulsing, cssPulse, pulseScale, animationDuration])
 
   const handlePress = useCallback(() => {
     onPress?.(date, value)
@@ -88,7 +97,7 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   }, [isAnimated, pressScale])
 
   const transform: Array<{ scale: Animated.Value }> = [{ scale: pressScale }]
-  if (isToday && isAnimated) transform.push({ scale: pulseScale })
+  if (pulsing && !cssPulse) transform.push({ scale: pulseScale })
 
   const hasData = value > 0
   const gradientId = `grad-${date}`
@@ -183,31 +192,49 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
     </Svg>
   )
 
+  const cell = (
+    <Animated.View style={{ transform }}>
+      {renderCell ? (
+        renderCell(dataPoint ?? null, date)
+      ) : isAnimated ? (
+        <View style={{ width: size, height: size }}>
+          {/* Base layer: always visible empty cell */}
+          <Svg width={size} height={size}>
+            <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={emptyColor} />
+            {todayBorder}
+          </Svg>
+          {/* Data layer: fades in when data arrives */}
+          <Animated.View style={[styles.overlay, { opacity: dataFadeAnim }]}>{dataLayer}</Animated.View>
+        </View>
+      ) : (
+        dataLayer
+      )}
+    </Animated.View>
+  )
+
+  // On web the pulse goes on a view of its own around the cell, since a CSS animation of transform would override the
+  // press spring's transform on the same view. The two scales compose about the same center, as they do natively
   return (
     <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button' style={{ padding: cellPad, marginRight: extra, marginBottom: extra }}>
-      <Animated.View style={{ transform }}>
-        {renderCell ? (
-          renderCell(dataPoint ?? null, date)
-        ) : isAnimated ? (
-          <View style={{ width: size, height: size }}>
-            {/* Base layer: always visible empty cell */}
-            <Svg width={size} height={size}>
-              <Rect x={0} y={0} width={size} height={size} rx={radius} ry={radius} fill={emptyColor} />
-              {todayBorder}
-            </Svg>
-            {/* Data layer: fades in when data arrives */}
-            <Animated.View style={[styles.overlay, { opacity: dataFadeAnim }]}>{dataLayer}</Animated.View>
-          </View>
-        ) : (
-          dataLayer
-        )}
-      </Animated.View>
+      {cssPulse ? <View style={[styles.pulse, css({ animationDuration: `${animationDuration * PULSE_HALF * 2}ms` })]}>{cell}</View> : cell}
     </Pressable>
   )
 }
 
+// react-native-web's CSS animation styles, which React Native's types don't list
+const css = (style: Record<string, unknown>) => style as ViewStyle
+
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0 }
+  overlay: { position: 'absolute', top: 0, left: 0 },
+  // The native loop's look: 1 to 1.2 and back, each half eased with Easing.inOut(Easing.sin), whose curve this
+  // cubic-bezier follows to within 0.2%. A timing function applies to each interval between keyframes, so to each half
+  pulse: css({
+    animationIterationCount: 'infinite',
+    // As CSS strings: react-native-web only turns a transform array into CSS at a style's top level, and inside a
+    // keyframe one becomes a declaration the browser drops, leaving every step empty
+    animationKeyframes: { '0%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.2)' }, '100%': { transform: 'scale(1)' } },
+    animationTimingFunction: 'cubic-bezier(0.37, 0, 0.63, 1)'
+  })
 })
 
 export const HeatmapCell = memo(HeatmapCellComponent)

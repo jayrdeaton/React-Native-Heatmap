@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
+import * as dateUtils from '../../utils/dateUtils'
 
 const FIXED_START = new Date(2025, 4, 17)
 const FIXED_END = new Date(2026, 4, 17)
@@ -112,5 +113,17 @@ describe('Heatmap.Scatter', () => {
     expect(() => {
       render(<Heatmap.Scatter data={[]} startDate={FIXED_START} endDate={FIXED_END} />)
     }).not.toThrow()
+  })
+
+  it('lays the dots out once for new Dates at the same moments and data made afresh, and again when a moment moves', () => {
+    const parse = jest.spyOn(dateUtils, 'parseDate')
+    const data = () => [{ date: '2025-06-01', value: 2, segments: [{ color: '#40c463', value: 2 }] }]
+    const { rerender } = render(<Heatmap.Scatter data={data()} startDate={new Date(FIXED_START)} endDate={new Date(FIXED_END)} />)
+    expect(parse).toHaveBeenCalledTimes(1)
+    rerender(<Heatmap.Scatter data={data()} startDate={new Date(FIXED_START)} endDate={new Date(FIXED_END)} />)
+    expect(parse).toHaveBeenCalledTimes(1)
+    rerender(<Heatmap.Scatter data={data()} startDate={new Date(FIXED_START)} endDate={new Date(2026, 4, 18)} />)
+    expect(parse).toHaveBeenCalledTimes(2)
+    parse.mockRestore()
   })
 })

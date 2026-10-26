@@ -29,9 +29,9 @@ Each segment's `value` becomes that many dots (capped at 50 per segment), colore
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `data` | `DataPoint[]` | required | Same shape as `Heatmap.Calendar`. Only points with a non-empty `segments` array are plotted. |
-| `startDate` | `Date` | 1 year ago | First day included in the plot. |
-| `endDate` | `Date` | Today | Last day included in the plot. |
+| `data` | `DataPoint[]` | required | Same shape as `Heatmap.Calendar`. Only points with a non-empty `segments` array are plotted. Compared by what it says, as on `Heatmap.Calendar`, so data made afresh each render isn't laid out again. |
+| `startDate` | `Date` | 1 year ago | First day included in the plot. Compared by its time, so a new Date for the same moment isn't laid out again. |
+| `endDate` | `Date` | Today | Last day included in the plot. Compared by its time, as `startDate`. |
 | `width` | `number` | `300` | SVG canvas width, in pixels. |
 | `height` | `number` | `150` | SVG canvas height, in pixels. |
 | `dotRadius` | `number` | `2` | Radius of each dot, in pixels. |
@@ -61,9 +61,9 @@ Buckets and labels are on the device's clock: a day starts at local midnight and
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `data` | `TimelineDataPoint[]` | required | Array of `{ timestamp, value, color?, metadata? }`. `timestamp` is an ISO date string. |
-| `startTime` | `Date` | inferred from `data` | First moment shown. |
-| `endTime` | `Date` | inferred from `data` | Last moment shown. |
+| `data` | `TimelineDataPoint[]` | required | Array of `{ timestamp, value, color?, metadata? }`. `timestamp` is an ISO date string. Compared point by point (`timestamp`, `value`, `color`, `metadata` one level deep), so data made afresh each render isn't bucketed again. |
+| `startTime` | `Date` | inferred from `data` | First moment shown. Compared by its time, so a new Date for the same moment is no change. |
+| `endTime` | `Date` | inferred from `data` | Last moment shown. Compared by its time, as `startTime`. |
 | `zoom` | `number` | `20` | Pixels per hour. Higher zooms in. Clamped between `minZoom` and `maxZoom`, and adjustable by the user via pinch. |
 | `minZoom` | `number` | `0.5` | Minimum zoom reachable by pinch-out. |
 | `maxZoom` | `number` | `2000` | Maximum zoom reachable by pinch-in. |

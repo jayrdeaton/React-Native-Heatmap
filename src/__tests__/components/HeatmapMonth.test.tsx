@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint, MonthProps } from '../../types'
+import * as colorUtils from '../../utils/colorUtils'
 import { feedback, FeedbackPressable } from '../feedbackPressable'
 
 const DATA: DataPoint[] = [
@@ -175,5 +176,16 @@ describe('Heatmap.Month', () => {
     renderMonth({ data })
     expect(screen.getByLabelText('October 5, 2026: 2 events')).toBeTruthy()
     expect(screen.getByLabelText('October 12, 2026: 10 events')).toBeTruthy()
+  })
+
+  it('keeps its day map for data made afresh with the same points, and rebuilds it when a point changes', () => {
+    const build = jest.spyOn(colorUtils, 'buildDataMap')
+    const { rerender } = renderMonth({ data: DATA.map((point) => ({ ...point })) })
+    rerender(<Heatmap.Month data={DATA.map((point) => ({ ...point }))} month='2026-10' />)
+    expect(build).toHaveBeenCalledTimes(1)
+    rerender(<Heatmap.Month data={DATA.map((point) => ({ ...point, value: point.value + 1 }))} month='2026-10' />)
+    expect(build).toHaveBeenCalledTimes(2)
+    expect(screen.getByLabelText('October 5, 2026: 3 events')).toBeTruthy()
+    build.mockRestore()
   })
 })

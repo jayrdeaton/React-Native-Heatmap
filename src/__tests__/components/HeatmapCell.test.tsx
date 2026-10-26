@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react'
-import { Animated } from 'react-native'
+import * as ReactNative from 'react-native'
+import { Animated, Platform } from 'react-native'
 import * as svg from 'react-native-svg'
 
 import { HeatmapCell } from '../../components/HeatmapCell'
@@ -138,6 +139,58 @@ describe('HeatmapCell', () => {
       const loopSpy = jest.spyOn(Animated, 'loop')
       render(<HeatmapCell {...baseProps} isToday animated={false} />)
       expect(loopSpy).not.toHaveBeenCalled()
+    })
+
+    // Every style a View or Animated.View was drawn with, flattened one level, so a test can find the pulse's and the scales
+    const styles = (component: jest.SpyInstance) => component.mock.calls.map(([props]) => [props.style].flat())
+    const pulseStyle = (view: jest.SpyInstance) => styles(view).find((style) => style.some((part) => part && 'animationKeyframes' in part))
+    const scales = (animatedView: jest.SpyInstance) => styles(animatedView).find((style) => style.some((part) => part && 'transform' in part))?.[0].transform
+
+    it('pulses on the native driver beside the press scale on iOS, with no CSS animation', () => {
+      const view = jest.spyOn(ReactNative, 'View')
+      const animatedView = jest.spyOn(Animated, 'View')
+      const timing = jest.spyOn(Animated, 'timing')
+      render(<HeatmapCell {...baseProps} isToday animated />)
+      expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1.2, duration: 875, useNativeDriver: true }))
+      expect(scales(animatedView)).toHaveLength(2)
+      expect(pulseStyle(view)).toBeUndefined()
+    })
+
+    describe('on web', () => {
+      beforeEach(() => Object.assign(Platform, { OS: 'web' }))
+      afterEach(() => Object.assign(Platform, { OS: 'ios' }))
+
+      it('pulses with a CSS animation around the cell instead of an Animated loop', () => {
+        const view = jest.spyOn(ReactNative, 'View')
+        const animatedView = jest.spyOn(Animated, 'View')
+        const loopSpy = jest.spyOn(Animated, 'loop')
+        render(<HeatmapCell {...baseProps} isToday animated />)
+        expect(loopSpy).not.toHaveBeenCalled()
+        // 1 to 1.2 and back, each half eased in and out along a sine, as the native loop's two timings
+        expect(pulseStyle(view)).toEqual([
+          {
+            animationIterationCount: 'infinite',
+            animationKeyframes: { '0%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.2)' }, '100%': { transform: 'scale(1)' } },
+            animationTimingFunction: 'cubic-bezier(0.37, 0, 0.63, 1)'
+          },
+          { animationDuration: '1750ms' }
+        ])
+        // The press spring keeps its own view, which the CSS animation's transform would otherwise override
+        expect(scales(animatedView)).toHaveLength(1)
+      })
+
+      it('takes as long as the native loop for any animationDuration', () => {
+        const view = jest.spyOn(ReactNative, 'View')
+        render(<HeatmapCell {...baseProps} isToday animated animationDuration={200} />)
+        expect(pulseStyle(view)?.[1]).toEqual({ animationDuration: '1000ms' })
+      })
+
+      it('draws no pulse for a day that is not today, or when not animated', () => {
+        const view = jest.spyOn(ReactNative, 'View')
+        render(<HeatmapCell {...baseProps} animated />)
+        render(<HeatmapCell {...baseProps} isToday animated={false} />)
+        expect(pulseStyle(view)).toBeUndefined()
+      })
     })
   })
 

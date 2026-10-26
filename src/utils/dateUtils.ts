@@ -21,21 +21,25 @@ export function formatDisplayDate(dateStr: string): string {
  * Builds a week grid from startDate to endDate (inclusive).
  * Each week is an array of 7 day strings (YYYY-MM-DD) starting on Sunday.
  * Days outside the range are represented as empty strings.
+ * Only the days count, not the times: the grid is the same for any two Dates on the same days.
  */
 export function buildWeekGrid(startDate: Date, endDate: Date): string[][] {
   const weeks: string[][] = []
+  const startDay = toDateString(startDate)
+  const endDay = toDateString(endDate)
 
-  // Rewind to the Sunday on or before startDate
-  const cursor = new Date(startDate)
+  // Rewind to the Sunday on or before startDate. The cursor walks at noon, which no daylight saving change reaches,
+  // and days compare as YYYY-MM-DD strings, so the end day is in whatever time either Date carries (a start later
+  // in its day than the end used to drop the end day)
+  const cursor = parseDate(startDay)
+  cursor.setHours(12)
   cursor.setDate(cursor.getDate() - cursor.getDay())
 
-  const end = new Date(endDate)
-
-  while (cursor <= end) {
+  while (toDateString(cursor) <= endDay) {
     const week: string[] = []
     for (let i = 0; i < 7; i++) {
       const dayStr = toDateString(cursor)
-      const isInRange = cursor >= startDate && cursor <= end
+      const isInRange = dayStr >= startDay && dayStr <= endDay
       week.push(isInRange ? dayStr : '')
       cursor.setDate(cursor.getDate() + 1)
     }

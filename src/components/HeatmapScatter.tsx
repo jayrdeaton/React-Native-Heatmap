@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import Svg, { Circle } from 'react-native-svg'
 
+import { useStable } from '../hooks/useStable'
 import type { ScatterProps } from '../types'
 import { getDefaultDateRange, parseDate } from '../utils/dateUtils'
+import { sameDataPoints } from '../utils/equalityUtils'
 
 const MAX_DOTS = 50
 
@@ -11,14 +13,16 @@ function rand(n: number): number {
   return x - Math.floor(x)
 }
 
-export function HeatmapScatter({ data, startDate, endDate, width = 300, height = 150, dotRadius = 2 }: ScatterProps) {
-  const effectiveStart = useMemo(() => startDate ?? getDefaultDateRange().startDate, [startDate])
-  const effectiveEnd = useMemo(() => endDate ?? getDefaultDateRange().endDate, [endDate])
+export function HeatmapScatter({ data: dataProp, startDate, endDate, width = 300, height = 150, dotRadius = 2 }: ScatterProps) {
+  // Keyed on the times, not the Dates, so new Dates for the same moments each render don't lay the dots out again
+  const startProp = startDate?.getTime()
+  const endProp = endDate?.getTime()
+  const startTime = useMemo(() => startProp ?? getDefaultDateRange().startDate.getTime(), [startProp])
+  const endTime = useMemo(() => endProp ?? getDefaultDateRange().endDate.getTime(), [endProp])
+  const data = useStable(dataProp, sameDataPoints)
 
   const dots = useMemo(() => {
     const padding = dotRadius + 2
-    const startTime = effectiveStart.getTime()
-    const endTime = effectiveEnd.getTime()
     const timeSpan = endTime - startTime
     const plotW = width - padding * 2
     const plotH = height - padding * 2
@@ -48,7 +52,7 @@ export function HeatmapScatter({ data, startDate, endDate, width = 300, height =
     }
 
     return result
-  }, [data, effectiveStart, effectiveEnd, width, height, dotRadius])
+  }, [data, startTime, endTime, width, height, dotRadius])
 
   return (
     <Svg width={width} height={height}>

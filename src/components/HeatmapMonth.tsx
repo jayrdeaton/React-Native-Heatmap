@@ -2,9 +2,11 @@ import { useMemo } from 'react'
 import { Pressable as NativePressable, StyleSheet, Text, View } from 'react-native'
 
 import { weekdayInitials } from '../constants'
+import { useStable } from '../hooks/useStable'
 import type { MonthProps, PressableComponent } from '../types'
 import { buildDataMap, computeDataRange, getAutoScaleColor, getColorForValue, getContrastTextColor, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildMonthGrid, formatDisplayDate, formatMonthTitle, getTodayString, shiftMonth } from '../utils/dateUtils'
+import { sameDataPoints } from '../utils/equalityUtils'
 
 const ARROW_SIZE = 36
 
@@ -26,8 +28,9 @@ function Arrow({ direction, disabled, color, onPress, Pressable }: ArrowProps) {
 
 // A month of dates, each on its day's color from the same scale as .Calendar, so a particular date is easy to find
 // and the busy days still show. Only the weeks the month needs (five for most), or six with fixedWeeks.
-export function HeatmapMonth({ data, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle, pressable }: MonthProps) {
+export function HeatmapMonth({ data: dataProp, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle, pressable }: MonthProps) {
   const Pressable = pressable ?? NativePressable
+  const data = useStable(dataProp, sameDataPoints)
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const dataMap = useMemo(() => buildDataMap(data), [data])

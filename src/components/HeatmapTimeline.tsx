@@ -2,8 +2,10 @@ import { type MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo
 import { PanResponder, StyleSheet, Text, View } from 'react-native'
 import { Rect, Svg } from 'react-native-svg'
 
+import { useStable } from '../hooks/useStable'
 import type { TimeBucket, TimelineDataPoint, TimelineGranularity, TimelineProps, TimelineTheme } from '../types'
 import { getAutoScaleColor, mergeColorScale } from '../utils/colorUtils'
+import { sameTimelinePoints } from '../utils/equalityUtils'
 import { bucketStart, buildTimeDataMap, clampZoom, formatTimeLabel, getGranularity, getLabelInterval, inferTimeBounds, shiftBucket } from '../utils/timeUtils'
 
 const defaultThemeLight: TimelineTheme = {
@@ -97,18 +99,24 @@ function buildPanResponder(params: { boundsRef: MutableRefObject<{ start: Date; 
   })
 }
 
-export function HeatmapTimeline({ data, startTime, endTime, zoom: zoomProp = 20, minZoom = 0.5, maxZoom = 2000, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, onZoomChange, onTimePress }: TimelineProps) {
+export function HeatmapTimeline({ data: dataProp, startTime, endTime, zoom: zoomProp = 20, minZoom = 0.5, maxZoom = 2000, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, onZoomChange, onTimePress }: TimelineProps) {
   const theme: TimelineTheme = useMemo(() => ({ ...(colorScheme === 'dark' ? defaultThemeDark : defaultThemeLight), ...themeProp }), [colorScheme, themeProp])
 
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
 
+  // Keyed on the times, not the Dates, and the data on what it says (see useStable), so a host making them afresh each
+  // render doesn't rework the bounds and the three bucket maps on every render
+  const startMs = startTime?.getTime()
+  const endMs = endTime?.getTime()
+  const data = useStable(dataProp, sameTimelinePoints)
+
   const bounds = useMemo(() => {
     const inferred = inferTimeBounds(data)
     return {
-      start: startTime ?? inferred.start,
-      end: endTime ?? inferred.end
+      start: startMs === undefined ? inferred.start : new Date(startMs),
+      end: endMs === undefined ? inferred.end : new Date(endMs)
     }
-  }, [startTime, endTime, data])
+  }, [startMs, endMs, data])
 
   const dataMaps = useMemo(
     () => ({

@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
+import * as dateUtils from '../../utils/dateUtils'
 import { feedback, FeedbackPressable } from '../feedbackPressable'
 
 const SAMPLE_DATA: DataPoint[] = [
@@ -186,6 +187,41 @@ describe('Heatmap.Calendar', () => {
     expect(() => {
       render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} theme={{ todayBorderColor: 'blue' }} />)
     }).not.toThrow()
+  })
+
+  // What a host can easily make afresh each render: endDate={new Date()}, or data mapped from its own rows. Equal
+  // values keep the grid and the cells drawn from them, so the host doesn't have to memoize them to stay cheap
+  describe('values made afresh each render', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    it("doesn't rebuild the grid for new Dates on the same days, and does for another day", () => {
+      const build = jest.spyOn(dateUtils, 'buildWeekGrid')
+      const { rerender } = render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={new Date(2025, 4, 17, 8)} endDate={new Date(2026, 4, 17, 9)} />)
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={new Date(2025, 4, 17, 20, 30)} endDate={new Date(2026, 4, 17, 23, 59)} />)
+      expect(build).toHaveBeenCalledTimes(1)
+      rerender(<Heatmap.Calendar data={SAMPLE_DATA} startDate={new Date(2025, 4, 17, 20, 30)} endDate={new Date(2026, 4, 18)} />)
+      expect(build).toHaveBeenCalledTimes(2)
+    })
+
+    it('shows the end day whatever the times, a start later in its day than the end included', async () => {
+      render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={new Date(2026, 0, 10, 18)} endDate={new Date(2026, 0, 15, 9)} />)
+      expect(await screen.findByLabelText('2026-01-15: 3 events')).toBeTruthy()
+    })
+
+    it('keeps its cells for data made afresh with the same points, and redraws them when a point changes', async () => {
+      const renderCell = jest.fn(() => null)
+      const copy = () => SAMPLE_DATA.map((point) => ({ ...point, segments: [{ color: '#216e39', value: point.value }], metadata: { source: 'logs' } }))
+      const { rerender } = render(<Heatmap.Calendar data={copy()} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} />)
+      await screen.findByLabelText('2026-01-15: 3 events')
+      renderCell.mockClear()
+
+      rerender(<Heatmap.Calendar data={copy()} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} />)
+      expect(renderCell).not.toHaveBeenCalled()
+
+      rerender(<Heatmap.Calendar data={copy().map((point) => (point.date === '2026-01-15' ? { ...point, value: 4 } : point))} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} />)
+      expect(renderCell).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-01-15', value: 4 }), '2026-01-15')
+      expect(screen.getByLabelText('2026-01-15: 4 events')).toBeTruthy()
+    })
   })
 
   // The grid waits for the first idle moment: requestIdleCallback where the runtime has it
