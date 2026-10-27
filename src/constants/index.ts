@@ -42,10 +42,13 @@ export const defaultGridTheme: GridTheme = {
   markHeight: 3,
   markGap: 2,
   markColor: '#cf222e',
+  boundaryGap: 0,
+  selectedColor: '#0f0f0f',
   backgroundColor: 'transparent'
 }
 
 export const defaultDarkGridTheme: GridTheme = {
   ...defaultGridTheme,
-  markColor: '#f85149'
+  markColor: '#f85149',
+  selectedColor: '#f0f0f0'
 }

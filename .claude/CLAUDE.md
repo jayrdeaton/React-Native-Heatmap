@@ -53,9 +53,11 @@ src/
                                      the whole calendar is a Pressable (pressable or React Native's) that clears the selection;
                                      measures how many weeks are in view for the ripple's step (waveStep)
     HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority);
-                                     animated, it holds a stack of looks, its next one fading in over the rest on its column's delay
-                                     (the ripple); press/pulse/fade animations via RN's built-in Animated API, except on web, where
-                                     the fade and today's pulse are CSS keyframe animations
+                                     animated, it holds a stack of looks (useFadeLayers), its next one fading in over the rest on its
+                                     column's delay (the ripple); press/pulse animations via RN's built-in Animated API, except
+                                     today's pulse on web, a CSS keyframe animation
+    FadeLayerView.tsx              - one layer of a fade: Animated.View on the native driver, or on web a CSS keyframe fade, paused
+                                     once a newer layer is on top
     WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state and its fade's
                                      delay (the wave step times its distance from where the wave starts)
     DayLabels.tsx                  - Mon/Wed/Fri row labels
@@ -66,11 +68,15 @@ src/
                                      controlled month, arrows bounded by minDate/maxDate, selectedDate outlined, weekStartsOn
     HeatmapGrid.tsx                - public .Grid: rows by columns of local minute, hour or day cells ending at endTime, filled across
                                      or down; flex bars in one row, square cells in several; heat scaled from zero (as .Timeline);
-                                     marks as tick rows, pending cells hollow, plain Views unless onCellPress makes each a Pressable
+                                     marks as tick rows, pending cells hollow, plain Views unless onCellPress makes each a Pressable;
+                                     boundaryGap before a line opening a new day among shares of one; a selected cell's outline;
+                                     animated, each cell a memoized GridCellView rippling as .Calendar's days (useFadeLayers)
     HeatmapScatter.tsx             - public .Scatter (experimental, see EXPERIMENTAL.md): deterministic jittered dot swarm from segments
     HeatmapTimeline.tsx            - public .Timeline (experimental, see EXPERIMENTAL.md): pan/pinch-zoomable bucketed strip,
                                      hand-rolled PanResponder built once in a run-once layout effect (see in-file comments on why)
   hooks/
+    useFadeLayers.ts               - a cell's looks while its next one fades in over them on its delay, shared by .Calendar's
+                                     and .Grid's cells: stopped where it is by a newer look, the ones under it dropped once it's in
     useStable.ts                   - the last value handed in while each new one is equal to it (kept in state), so data a host
                                      makes afresh each render keeps what's memoized on it
   utils/
@@ -80,7 +86,8 @@ src/
                                      .Month's month grid (its weeks, or six with fixedWeeks), month shifting and titles
     timeUtils.ts                   - zoom<->granularity math, time bucketing on the local clock, bucket stepping,
                                      time-label formatting for .Timeline, bucket labels for .Grid
-    gridUtils.ts                   - .Grid's cells (window, alignment, blanks, fill, pending, mark) and its accessibility labels,
+    gridUtils.ts                   - .Grid's cells (window, alignment to a whole unit or an even share of one, blanks, fill, pending,
+                                     mark, boundary) and its accessibility labels,
                                      kept pure so the tests can read the colors the mocks don't render
     equalityUtils.ts               - sameDataPoints/sameTimelinePoints: whether two data arrays say the same thing, for useStable;
                                      sameSegments, which HeatmapCell also compares looks with
@@ -168,11 +175,23 @@ Jay liked the calendar's load ripple and asked for changes to ripple too. Before
 - **Checked** in Lumber in the iOS simulator (iPhone 18 Pro, RN 0.88, recorded and pulled apart frame by frame): the ERROR filter rippling from today across 14 weeks with each day blending, FATAL, clearing back to all exactly as before, and four quick taps with no blank frames after the fix. In Lumber Dev over CDP at 1200pt: 47 week delays from 0 to 496ms, every layer settled within about a second with none left paused, and two levels tapped 150ms apart leaving 36 layers paused mid-fade that held their opacity. Lumber's heatmap and screen tests pass on it. Not checked: Android, and the non-solid cell modes on a device (the tests draw all six).
 - **Tests:** `HeatmapCell.test.tsx` (`fading to the next look`) replaces `Rect` with an element carrying its fill, so a test reads the layers drawn in order, and holds `Animated.timing`'s fades to finish or stop them itself; 7 of its 10 tests fail on the cell before this change. `WeekColumn.test.tsx` and `HeatmapCalendar.test.tsx` cover the step (the mock View measures 300pt), `layoutUtils.test.ts` `waveStep`. The `react-native` mock's `start` callback now gets `{ finished: true }`.
 
+## Hours in quarter days, and the Grid's ripple (2026-10-27)
+
+For Lumber's hourly heatmap (6 rows of hours in columns, a day to every 4, for an app too new for the calendar's weeks), made of `.Grid` rather than a component of its own.
+
+- **Shares of a unit align:** a line (a row, or a column filled down) that evenly divides an hour (15, 20 or 30 minutes) or a day (6, 8 or 12 hours) now aligns as a whole one did, by default when there's more than one line: each starts on its share (`lineStart`), and the cells after the one under way are blank. Shares step on the clock (`setHours`), so a 6-hour line still starts at 06:00 across a daylight saving change; whole units step as before. Two existing tests used 12- and 3-hour lines meaning to slide, now 10 and 5 hours; a grid with a share-of-a-day line that relied on sliding needs `align={false}` (a behavior change for 0.9.0).
+- **Days set apart:** a cell that opens an aligned line starting a new day (or hour, or week) is `boundary`; `.Grid` adds `theme.boundaryGap` (0 by default) before that line, as a column's `marginLeft` on every row and on the marks under it, or a row's `marginTop`. The first line gets none.
+- **`selected`:** the cell holding that moment gets an outline (`theme.selectedColor`, `#0f0f0f` light, `#f0f0f0` dark, 1.5 wide) laid over it, which never fades.
+- **`animated`:** each cell is a `GridCellView` (memoized, every prop a value, so a redraw with the same data redraws no cell) keeping its looks with `useFadeLayers`, the hook `HeatmapCell`'s fade became, and drawing each through `FadeLayerView`. The wave runs across the columns (all in view, so `waveStep(animationDuration, columns)`), from the newest by default. Going to or from a hollow pending look changes at once (`canFade`), since there's nothing to blend. The press handler never changes (a ref holds the latest `onCellPress` and the buckets by start), so a host's inline handler doesn't redraw every cell. Fades assume opaque fills; a translucent one shows the look under it until its fade ends.
+- **Keyed by time:** every cell is keyed by its bucket's start, not its index, so when the grid moves on a column the cells still in view keep their looks (and any fade) as they move over, and only the new column mounts.
+- **Checked** in Lumber's hourly heatmap, in the iOS simulator (switching to hours rippling in from today, ERROR rippling across 14 columns with a tapped hour's outline holding still) and in Lumber Dev at 1200pt (45 columns, ERROR's delays 0 to 420ms, every fade settled by 0.8s, the outline on one cell). Not checked: Android.
+- **Tests:** `gridUtils.test.ts` covers 6-hour columns, 12-hour rows (and sliding with `align={false}`), 15-minute columns and `boundary`; `HeatmapGrid.test.tsx` the gap (by the mocked View's styles), the outline, the ripple's delay, no fade for equal data or a window moving on, pending cells snapping, and a press reaching the newest handler.
+
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 319 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
+- 328 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - `.Grid` is the same: without `onCellPress` it's only Views, which the mock renders as nothing, so its windows, alignment, colors, pending cells, marks and labels are pinned in gridUtils.test.ts and the component tests press cells made buttons. The tests build times with local `Date`s (`new Date(2026, 9, 24, 9)`), so they pass in any time zone; checked on 2026-10-24 under `TZ=` Asia/Bangkok, Asia/Kolkata (half hour), America/New_York, Australia/Lord_Howe (half-hour daylight saving) and UTC
 - One bucketing, on the device's clock: `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above

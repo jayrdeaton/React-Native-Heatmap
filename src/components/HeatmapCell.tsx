@@ -2,9 +2,11 @@ import React, { memo, useCallback, useEffect, useState } from 'react'
 import { Animated, Easing, Platform, Pressable as NativePressable, StyleSheet, View, type ViewStyle } from 'react-native'
 import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg'
 
+import { useFadeLayers } from '../hooks/useFadeLayers'
 import type { CellMode, DataPoint, PressableComponent, Segment } from '../types'
 import { sameSegments } from '../utils/equalityUtils'
 import { cellPadding, cellPitch } from '../utils/layoutUtils'
+import { FadeLayerView } from './FadeLayerView'
 
 interface HeatmapCellProps {
   date: string
@@ -33,11 +35,6 @@ interface HeatmapCellProps {
 // Each half of today's pulse, up to 1.2 and back, takes this many animationDurations
 const PULSE_HALF = 2.5
 
-// A cell holds at most this many looks at once while fades overlap: the one it settled on, the newest, and those caught
-// mid-fade between them. Changes faster than a fade (a few quick taps on a filter) drop the oldest caught mid-fade, never
-// the settled one: it's the only one drawn whole, and dropping it showed the day empty for a frame
-const MAX_LAYERS = 4
-
 // What a cell draws for its day, kept with each layer of a fade so the look it's leaving stays drawn under the one coming in
 interface Look {
   hasData: boolean
@@ -46,16 +43,6 @@ interface Look {
   emptyColor: string
   normalizedValue: number
   segments?: Segment[]
-}
-
-// A look as drawn, and the fade that brought it in, with its own column delay and length so a resize mid-fade doesn't move it
-interface Layer {
-  id: number
-  look: Look
-  fading: boolean
-  delay: number
-  duration: number
-  opacity: Animated.Value
 }
 
 // Whether two looks draw the same: an empty day draws only the empty color, whatever its data says, and a solid one only its color
@@ -179,47 +166,16 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const [pulseScale] = useState(() => new Animated.Value(1))
 
   // When the day's data changes, its next look fades in over the one it shows, on its column's delay, so a change to the
-  // whole calendar (a filter, a new busiest day rescaling every shade) ripples across it as the first data does. Fading in
-  // over the old look rather than out to empty and back blends the two: an opaque color drawn at opacity t over another is
-  // their mix at t, so a day passes through the shades between. Only where the cell draws itself and animates; otherwise
-  // the look changes at once. A day with data when the cell mounts shows it at once
+  // whole calendar (a filter, a new busiest day rescaling every shade) ripples across it as the first data does (see
+  // useFadeLayers). Only where the cell draws itself and animates; otherwise the look changes at once
   const look: Look = { hasData: value > 0, cellMode, color, emptyColor, normalizedValue, segments }
-  const fades = isAnimated && !renderCell
-  const [layers, setLayers] = useState<Layer[]>(() => [{ id: 0, look, fading: false, delay: 0, duration: 0, opacity: new Animated.Value(1) }])
-  const top = layers[layers.length - 1]
-  if (!sameLook(look, top.look)) {
-    const next: Layer = { id: top.id + 1, look, fading: fades, delay: dataFadeDelay, duration: animationDuration, opacity: new Animated.Value(fades ? 0 : 1) }
-    const kept = layers.length < MAX_LAYERS ? layers : [layers[0], ...layers.slice(layers.length + 2 - MAX_LAYERS)]
-    setLayers(fades ? [...kept, next] : [next])
-  }
-
-  // The newest look fades in, and once it's in the looks under it go. A newer one arriving first stops it where it is
-  // (a stopped native animation holds its value; on web the CSS animation is paused), so a day caught mid-fade carries on
-  // from the blend it showed, and one the wave hadn't reached yet still shows the look before it
-  useEffect(() => {
-    if (!top.fading) return
-    const settle = () =>
-      setLayers((current) => {
-        const i = current.indexOf(top)
-        return i > 0 ? current.slice(i) : current
-      })
-    if (Platform.OS === 'web') {
-      const handle = setTimeout(settle, top.delay + top.duration)
-      return () => clearTimeout(handle)
-    }
-    const fade = Animated.timing(top.opacity, { toValue: 1, duration: top.duration, delay: top.delay, useNativeDriver: true })
-    fade.start(({ finished }) => {
-      if (finished) settle()
-    })
-    return () => fade.stop()
-  }, [top])
+  const { layers, top } = useFadeLayers(look, { same: sameLook, fades: isAnimated && !renderCell, delay: dataFadeDelay, duration: animationDuration })
 
   // Today's pulse runs natively on iOS and Android. react-native-web can't drive Animated natively, so there it would
   // run from JavaScript, a React commit every frame for as long as today is on screen; a CSS animation of the same
   // scale runs on the compositor instead (styles.pulse)
   const pulsing = isToday && isAnimated
-  const web = Platform.OS === 'web'
-  const cssPulse = pulsing && web
+  const cssPulse = pulsing && Platform.OS === 'web'
 
   useEffect(() => {
     if (!pulsing || cssPulse) {
@@ -267,20 +223,10 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   const layerViews = layers.map((layer, i) => {
     if (i === 0 && !layer.look.hasData) return null
     // An empty look draws in the empty color as it is now, as the base does
-    const drawn = drawLook(layer.look.hasData ? layer.look : { ...layer.look, emptyColor }, `${date}-${layer.id}`, size, radius, true, null)
-    if (layer.fading && !web) {
-      return (
-        <Animated.View key={layer.id} style={[styles.overlay, { opacity: layer.opacity }]}>
-          {drawn}
-        </Animated.View>
-      )
-    }
-    // On web the fade is a CSS animation, run by the compositor as the pulse is, rather than Animated from JavaScript
-    const fade = layer.fading ? [styles.fadeIn, css({ animationDuration: `${layer.duration}ms`, animationDelay: `${layer.delay}ms`, animationPlayState: layer === top ? 'running' : 'paused' })] : null
     return (
-      <View key={layer.id} style={[styles.overlay, fade]}>
-        {drawn}
-      </View>
+      <FadeLayerView key={layer.id} layer={layer} top={top} style={styles.overlay}>
+        {drawLook(layer.look.hasData ? layer.look : { ...layer.look, emptyColor }, `${date}-${layer.id}`, size, radius, true, null)}
+      </FadeLayerView>
     )
   })
 
@@ -321,13 +267,6 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
 const css = (style: Record<string, unknown>) => style as ViewStyle
 
 const styles = StyleSheet.create({
-  // A look fading in on web, waiting at 0 through its delay (fill mode both) and holding at 1 after. The curve is
-  // Animated.timing's default, Easing.inOut(Easing.ease), which the phones' fade runs, to within 0.35%
-  fadeIn: css({
-    animationFillMode: 'both',
-    animationKeyframes: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
-    animationTimingFunction: 'cubic-bezier(0.385, 0.05, 0.615, 0.95)'
-  }),
   overlay: { left: 0, position: 'absolute', top: 0 },
   // The native loop's look: 1 to 1.2 and back, each half eased with Easing.inOut(Easing.sin), whose curve this
   // cubic-bezier follows to within 0.2%. A timing function applies to each interval between keyframes, so to each half

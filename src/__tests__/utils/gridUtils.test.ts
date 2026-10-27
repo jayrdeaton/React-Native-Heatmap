@@ -120,17 +120,53 @@ describe('buildGridCells in several rows', () => {
     expect(mondays[3][2]).toBeNull()
   })
 
-  it('slides a grid whose rows span no larger unit, filled across', () => {
-    const grid = build({ rows: 2, columns: 12 })
-    expect(grid[0][0]?.bucket.startTime).toEqual(hour(10, 23))
-    expect(grid[0][11]?.bucket.startTime).toEqual(hour(21, 23))
-    expect(grid[1][11]?.bucket.startTime).toEqual(hour(9, 24))
+  it('slides a grid whose rows neither span nor divide a larger unit, filled across', () => {
+    // 10 hours a row: no share of a day
+    const grid = build({ rows: 2, columns: 10 })
+    expect(grid[0][0]?.bucket.startTime).toEqual(hour(14, 23))
+    expect(grid[0][9]?.bucket.startTime).toEqual(hour(23, 23))
+    expect(grid[1][9]?.bucket.startTime).toEqual(hour(9, 24))
+    expect(grid.flat().some((cell) => cell?.boundary)).toBe(false)
   })
 
   it('fills down columns when asked, in time order', () => {
-    const grid = build({ rows: 3, columns: 2, fillDirection: 'column' })
-    expect(starts(grid[0])).toEqual([hour(4), hour(7)])
-    expect(starts(grid[2])).toEqual([hour(6), hour(9)])
+    const grid = build({ rows: 5, columns: 2, fillDirection: 'column' })
+    expect(starts(grid[0])).toEqual([hour(0), hour(5)])
+    expect(starts(grid[4])).toEqual([hour(4), hour(9)])
+  })
+
+  it("starts each column of 6 hours on its quarter of the day, leaving the hours after the one under way blank, and marks each day's first", () => {
+    const grid = build({ rows: 6, columns: 5, fillDirection: 'column' })
+    expect(starts(grid[0])).toEqual([hour(6, 23), hour(12, 23), hour(18, 23), hour(0), hour(6)])
+    expect(grid[3][4]?.bucket.startTime).toEqual(hour(9))
+    expect(grid[4][4]).toBeNull()
+    expect(grid[5][4]).toBeNull()
+    // Only the line opening Saturday sets itself apart
+    expect(grid[0].map((cell) => cell?.boundary)).toEqual([false, false, false, true, false])
+    expect(
+      grid
+        .slice(1)
+        .flat()
+        .some((cell) => cell?.boundary)
+    ).toBe(false)
+  })
+
+  it('starts each row of 12 hours at midnight or noon, and slides with align off', () => {
+    const grid = build({ rows: 3, columns: 12 })
+    expect(grid.map((row) => row[0]?.bucket.startTime)).toEqual([hour(0, 23), hour(12, 23), hour(0)])
+    expect(grid[2][9]?.bucket.startTime).toEqual(hour(9))
+    expect(grid[2][10]).toBeNull()
+    expect(grid.map((row) => row[0]?.boundary)).toEqual([true, false, true])
+    const sliding = build({ rows: 3, columns: 12, align: false })
+    expect(sliding[2][11]?.bucket.startTime).toEqual(hour(9))
+  })
+
+  it('starts each column of 15 minutes on its quarter of the hour', () => {
+    const grid = build({ rows: 15, columns: 4, granularity: 'minute', fillDirection: 'column' })
+    expect(starts(grid[0])).toEqual([new Date(2026, 9, 24, 8, 45), hour(9), new Date(2026, 9, 24, 9, 15), new Date(2026, 9, 24, 9, 30)])
+    expect(grid[11][3]?.bucket.startTime).toEqual(new Date(2026, 9, 24, 9, 41))
+    expect(grid[12][3]).toBeNull()
+    expect(grid[0].map((cell) => cell?.boundary)).toEqual([false, true, false, false])
   })
 
   it('starts each row of an hour of minutes at :00 in several rows', () => {

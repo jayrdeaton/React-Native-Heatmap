@@ -9,6 +9,9 @@ export interface GridCell {
   pending: boolean
   /** The color of the tick under it, or null for none. */
   mark: string | null
+  /** The first cell of an aligned line that starts a new hour, day or week among lines of a share of one (6 hours of a
+   * day, 15 minutes of an hour), which .Grid sets apart by the theme's boundaryGap. Every line of a whole unit starts one. */
+  boundary: boolean
 }
 
 interface GridCellOptions {
@@ -29,24 +32,47 @@ interface GridCellOptions {
 
 type LineUnit = 'hour' | 'day' | 'week'
 
-// The larger unit a line of cells spans exactly, if any: an hour of minutes, a day of hours or a week of days
+// The larger unit a line of cells spans exactly or evenly divides, if any: an hour of minutes (or 15, 20 or 30 of them),
+// a day of hours (or 6, 8 or 12 of them), or a week of days
 function lineUnit(granularity: TimelineGranularity, length: number): LineUnit | null {
-  if (granularity === 'minute' && length === 60) return 'hour'
-  if (granularity === 'hour' && length === 24) return 'day'
+  if (granularity === 'minute' && length > 1 && 60 % length === 0) return 'hour'
+  if (granularity === 'hour' && length > 1 && 24 % length === 0) return 'day'
   if (granularity === 'day' && length === 7) return 'week'
   return null
 }
 
-// Where the aligned line holding a moment starts: its hour, its local midnight, or its week's first day
-function lineStart(moment: Date, unit: LineUnit, weekStartsOn: number): Date {
-  if (unit === 'hour') return bucketStart(moment, 'hour')
-  const day = bucketStart(moment, 'day')
-  if (unit === 'day') return day
-  return shiftBucket(day, 'day', -((day.getDay() - weekStartsOn + 7) % 7))
+const UNIT_LENGTH: Record<LineUnit, number> = { hour: 60, day: 24, week: 7 }
+
+// Where the aligned line holding a moment starts: its share of the hour or the day (the whole of it for a line of 60
+// minutes or 24 hours: its hour or its local midnight), or its week's first day
+function lineStart(moment: Date, unit: LineUnit, length: number, weekStartsOn: number): Date {
+  if (unit === 'week') {
+    const day = bucketStart(moment, 'day')
+    return shiftBucket(day, 'day', -((day.getDay() - weekStartsOn + 7) % 7))
+  }
+  if (unit === 'day' && length === 24) return bucketStart(moment, 'day')
+  const start = bucketStart(moment, unit === 'hour' ? 'minute' : 'hour')
+  if (unit === 'hour') start.setMinutes(start.getMinutes() - (start.getMinutes() % length))
+  else start.setHours(start.getHours() - (start.getHours() % length))
+  return start
 }
 
-function shiftLine(start: Date, unit: LineUnit, by: number): Date {
-  return unit === 'week' ? shiftBucket(start, 'day', 7 * by) : shiftBucket(start, unit, by)
+// Whole units step as their buckets do (days on the calendar). A share of a day steps on the clock, so a line of 6 hours
+// still starts at 06:00 across a daylight saving change
+function shiftLine(start: Date, unit: LineUnit, length: number, by: number): Date {
+  if (unit === 'week') return shiftBucket(start, 'day', 7 * by)
+  if (length === UNIT_LENGTH[unit]) return shiftBucket(start, unit, by)
+  const next = new Date(start)
+  if (unit === 'day') next.setHours(next.getHours() + length * by)
+  else next.setMinutes(next.getMinutes() + length * by)
+  return next
+}
+
+// Whether an aligned line starting here opens a new unit: :00, local midnight, or the week's first day
+function opensUnit(start: Date, unit: LineUnit, weekStartsOn: number): boolean {
+  if (unit === 'hour') return start.getMinutes() === 0
+  if (unit === 'day') return start.getHours() === 0
+  return start.getDay() === weekStartsOn
 }
 
 /**
@@ -64,10 +90,10 @@ export function buildGridCells({ data, rows, columns, granularity, fillDirection
   const last = bucketStart(end, granularity)
   const unit = lineUnit(granularity, lineLength)
   const aligned = unit !== null && (align ?? lines > 1)
-  const firstLine = unit && aligned ? shiftLine(lineStart(last, unit, weekStartsOn), unit, 1 - lines) : null
+  const firstLine = unit && aligned ? shiftLine(lineStart(last, unit, lineLength, weekStartsOn), unit, lineLength, 1 - lines) : null
 
   // Each cell's start, in time order
-  const starts = Array.from({ length: total }, (_, k) => (unit && firstLine ? shiftBucket(shiftLine(firstLine, unit, Math.floor(k / lineLength)), granularity, k % lineLength) : shiftBucket(last, granularity, k - total + 1)))
+  const starts = Array.from({ length: total }, (_, k) => (unit && firstLine ? shiftBucket(shiftLine(firstLine, unit, lineLength, Math.floor(k / lineLength)), granularity, k % lineLength) : shiftBucket(last, granularity, k - total + 1)))
 
   const values = buildTimeDataMap(data, granularity)
   const markColors = new Map<number, string>()
@@ -87,7 +113,8 @@ export function buildGridCells({ data, rows, columns, granularity, fillDirection
     }
     const pending = bucket.startTime.getTime() < pendingStart
     const fill = pending ? null : autoScale ? getAutoScaleColor(bucket.value, 0, busiest, colorScale) : getColorForValue(bucket.value, colorScale)
-    grid[row].push({ bucket, fill, pending, mark: markColors.get(bucket.startTime.getTime()) ?? null })
+    const boundary = unit !== null && firstLine !== null && k % lineLength === 0 && opensUnit(bucket.startTime, unit, weekStartsOn)
+    grid[row].push({ bucket, fill, pending, mark: markColors.get(bucket.startTime.getTime()) ?? null, boundary })
   })
   return grid
 }

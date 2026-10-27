@@ -282,8 +282,9 @@ The month is controlled: `onMonthChange` gets the month an arrow moves to, and t
 - **A pulse line**: 1 row of 48 hours (or 60 minutes) for a list row or a card.
 - **A week by hour**: 7 rows of 24 hours, each row one day from local midnight.
 - **The calendar's shape**: 7 rows of days filled down columns, a column per week.
+- **Hours by quarter day**: 6 rows of hours filled down columns, a day in 4 columns (night, morning, afternoon, evening), set apart by `theme.boundaryGap`.
 
-It's static, so it can sit inside something pressable; give it `onCellPress` to make each cell a button.
+It's static, so it can sit inside something pressable; give it `onCellPress` to make each cell a button, `selected` to outline one, and `animated` to ripple each change across it as `Heatmap.Calendar` does.
 
 ```tsx
 import Heatmap from '@rific/heatmap'
@@ -301,13 +302,18 @@ const data = [
 
 // Twelve weeks of days, filled down columns like Heatmap.Calendar
 <Heatmap.Grid data={data} rows={7} columns={12} granularity='day' fillDirection='column' weekStartsOn={1} />
+
+// Three and a half days of hours, six to a column, the days set apart, a tapped hour outlined, rippling to each change
+<Heatmap.Grid data={data} rows={6} columns={14} granularity='hour' fillDirection='column' theme={{ boundaryGap: 4 }} selected={tappedHour} onCellPress={(bucket) => setTappedHour(bucket.startTime)} animated />
 ```
 
 Cells are on the device's clock: a day starts at local midnight and an hour at :00. Each point counts toward the cell its `timestamp` falls in, so counts already one per cell map 1:1. The last cell in time is the one under way at `endTime` (now by default); the grid doesn't move on its own, so render it again to move it on.
 
-When each row (or column, filling down) spans exactly an hour of minutes, a day of hours or a week of days, and there's more than one, they're aligned: each starts at :00, local midnight or `weekStartsOn`, and the cells after the one under way stay blank. A single row is never aligned unless you pass `align`, so a 60-minute strip is the last 60 minutes rather than the clock hour; `align={false}` slides a multi-row grid instead.
+When each row (or column, filling down) spans exactly an hour of minutes, a day of hours or a week of days, and there's more than one, they're aligned: each starts at :00, local midnight or `weekStartsOn`, and the cells after the one under way stay blank. So are rows that evenly divide an hour or a day (15, 20 or 30 minutes; 6, 8 or 12 hours): each starts on its share, 06:00 or 12:00, still on the clock across a daylight saving change, and a row that opens a new hour or day stands apart from the one before by `theme.boundaryGap`. A single row is never aligned unless you pass `align`, so a 60-minute strip is the last 60 minutes rather than the clock hour; `align={false}` slides a multi-row grid instead.
 
 A single row draws bars `theme.cellHeight` tall (10 by default); several rows draw square cells sharing the width, as `Heatmap.Calendar` fits its cells. With `autoScale` each cell is scaled against the busiest one in view from zero, as `Heatmap.Timeline` does, so a steady stream reads steady.
+
+With `animated`, a cell whose value or color changes fades its next look in over the one it shows, on a delay that grows with each column from the newest (`animationDirection='rtl'`, the default), so a filter or a new busiest cell ripples across the grid, crossing every column in at most 1.2 `animationDuration`s. Cells are keyed by their time, so when the grid moves on a column, the ones still in view keep their looks rather than fading. A hollow pending cell changes at once, and the fades are meant for opaque colors: a translucent one shows the look under it until its fade ends. `selected` outlines the cell holding that moment in `theme.selectedColor`; the outline never fades.
 
 `marks` puts a tick under each cell holding a point above 0, for the rare thing worth spotting (a crash, a deploy), in the point's `color` or the theme's `markColor`. While `marks` is set, a tick row sits under every row of cells, so the grid keeps its height whether or not anything is marked. `pendingBefore` draws the cells before it hollow, for data still loading: a sync that pages newest first shows its outlines receding into the past.
 
@@ -318,16 +324,20 @@ A single row draws bars `theme.cellHeight` tall (10 by default); several rows dr
 | `columns` | `number` | `30` | Columns of cells. |
 | `granularity` | `'minute' \| 'hour' \| 'day'` | `'day'` | The time each cell covers. |
 | `fillDirection` | `'row' \| 'column'` | `'row'` | Time runs across each row, or down each column. |
-| `align` | `boolean` | On for several rows (or columns) | Start each row (or column) on its hour, local midnight or week, when it spans exactly one. |
+| `align` | `boolean` | On for several rows (or columns) | Start each row (or column) on its hour, local midnight or week, when it spans exactly one, or on its share of one when it evenly divides an hour or a day. |
 | `weekStartsOn` | `0`-`6` | `0` | The first day of an aligned week of days, `0` for Sunday. |
 | `endTime` | `Date` | Now | The last cell in time is the one under way at this moment. |
 | `color` | `string` | - | Single accent color, as on `Heatmap.Calendar`. |
 | `colorScale` | `Partial<ColorScale>` | auto | As on `Heatmap.Calendar`. Its `emptyColor` fills cells with nothing in them. |
 | `colorScheme` | `'light' \| 'dark'` | - | Built-in light or dark palette and theme. |
 | `autoScale` | `boolean` | `true` | Scale against the busiest cell in view, from zero. Otherwise by the scale's thresholds. |
-| `theme` | `Partial<GridTheme>` | `{ cellRadius: 2, gap: 2, markHeight: 3, markGap: 2, markColor: '#cf222e', backgroundColor: 'transparent' }` | Sizes and colors. `cellHeight` fixes each cell's height (10 in one row, square in several by default); `pendingColor` outlines pending cells (the scale's top color by default); dark `colorScheme` makes `markColor` `'#f85149'`. |
+| `theme` | `Partial<GridTheme>` | `{ cellRadius: 2, gap: 2, markHeight: 3, markGap: 2, markColor: '#cf222e', boundaryGap: 0, selectedColor: '#0f0f0f', backgroundColor: 'transparent' }` | Sizes and colors. `cellHeight` fixes each cell's height (10 in one row, square in several by default); `pendingColor` outlines pending cells (the scale's top color by default); `boundaryGap` is added before a row or column that opens a new day or hour among shares of one; dark `colorScheme` makes `markColor` `'#f85149'` and `selectedColor` `'#f0f0f0'`. |
 | `marks` | `TimelineDataPoint[]` | - | A tick under each cell holding a point above 0. Set it (even to `[]`) to reserve the tick rows. |
 | `pendingBefore` | `Date` | - | Cells before the one holding this moment are hollow. |
+| `selected` | `Date \| null` | - | Outlines the cell holding this moment in `theme.selectedColor`. You keep it, from `onCellPress`. |
+| `animated` | `boolean` | `false` | Ripple each change across the columns, as `Heatmap.Calendar` does. |
+| `animationDirection` | `'ltr' \| 'rtl'` | `'rtl'` | Where the ripple starts: the newest column, or the oldest. |
+| `animationDuration` | `number` | `350` | How long one cell's fade takes, in ms. |
 | `onCellPress` | `(bucket: TimeBucket) => void` | - | Makes each cell a button, called with `{ startTime, endTime, granularity, value }`. Without it the grid takes no touches. |
 | `valueLabel` | `string` | `'event'` | Unit in the default labels, pluralized automatically (`'Logs in 12 of the last 48 hours'`). |
 | `accessibilityLabel` | `string` | Counted from the cells | The grid read as one element. With `onCellPress` each cell is labeled instead (`'October 24, 2026, 09:00: 12 logs'`). |

@@ -177,6 +177,11 @@ export interface GridTheme {
   markColor: string
   /** The outline of pending cells. Without one, the scale's top color. */
   pendingColor?: string
+  /** Added to gap before an aligned line that starts a new day among lines of a share of one (6 or 12 hours), or a new
+   * hour among lines of minutes, so the days stand apart. */
+  boundaryGap: number
+  /** The outline of the selected cell. */
+  selectedColor: string
   backgroundColor: string
 }
 
@@ -209,6 +214,18 @@ export interface GridProps {
   marks?: TimelineDataPoint[]
   /** Cells before the one holding this moment are drawn hollow, for data still loading (a first sync paging newest first). */
   pendingBefore?: Date
+  /** The cell holding this moment is outlined in the theme's selectedColor. The host keeps it, from onCellPress, as
+   * .Calendar's selectedDate. */
+  selected?: Date | null
+  /** When a cell's value or color changes, its next look fades in over the one it shows on its column's delay, so a change
+   * to the whole grid ripples across it as .Calendar's days do, crossing the columns in at most 1.2 animationDurations.
+   * Hollow pending cells change at once. Meant for opaque colors: a translucent one shows the look under it until its
+   * fade ends. */
+  animated?: boolean
+  /** Where the ripple starts: 'rtl' (the default) from the newest column, 'ltr' from the oldest. */
+  animationDirection?: 'ltr' | 'rtl'
+  /** One cell's fade, in ms. */
+  animationDuration?: number
   /** Makes each cell a button. Without it the grid takes no touches, so it can sit inside something pressable. */
   onCellPress?: (bucket: TimeBucket) => void
   /** The unit in the default labels, pluralized with an s: 'log' reads 'Logs in 12 of the last 48 hours'. */
