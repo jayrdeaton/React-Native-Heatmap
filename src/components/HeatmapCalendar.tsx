@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Pressable as NativePressable, ScrollView, StyleSheet, View } from 'react-native'
+import { type LayoutChangeEvent, Pressable as NativePressable, ScrollView, StyleSheet, View } from 'react-native'
 
 import { useStable } from '../hooks/useStable'
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
 import { buildWeekGrid, getDefaultDateRange, getMonthLabels, parseDate, toDateString } from '../utils/dateUtils'
 import { sameDataPoints } from '../utils/equalityUtils'
-import { cellPitch } from '../utils/layoutUtils'
+import { cellPitch, waveStep } from '../utils/layoutUtils'
 import { DayLabels } from './DayLabels'
 import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
@@ -100,7 +100,13 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
     onSelectionChange?.(ownSelectedDate)
   }, [controlled, ownSelectedDate, onSelectionChange])
 
-  const gridHeight = 7 * cellPitch(theme.cellSize, theme.gutterSize) + (showMonthLabels ? theme.monthLabelHeight : 0)
+  const pitch = cellPitch(theme.cellSize, theme.gutterSize)
+  const gridHeight = 7 * pitch + (showMonthLabels ? theme.monthLabelHeight : 0)
+
+  // The fades' wave crosses the weeks in view in a bounded time, so it's measured by how many fit
+  const [viewWidth, setViewWidth] = useState(0)
+  const handleLayout = useCallback((event: LayoutChangeEvent) => setViewWidth(event.nativeEvent.layout.width), [])
+  const step = waveStep(animationDuration, Math.ceil(viewWidth / pitch))
 
   // A tap elsewhere clears the selection, so it's only a press while there's one to clear: a host's pressable (a haptic on
   // touch-down, say) then stays quiet for a tap that does nothing
@@ -108,11 +114,11 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
     <Pressable onPress={selectedDate ? dismissTooltip : undefined} style={[styles.row, { backgroundColor: theme.backgroundColor }]}>
       {showDayLabels && <DayLabels theme={theme} showMonthLabels={showMonthLabels} />}
 
-      <View style={styles.container}>
+      <View style={styles.container} onLayout={handleLayout}>
         <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
           <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
             {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} selectedDate={selectedDate} pressable={pressable} />)}</View>
+            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} waveStep={step} selectedDate={selectedDate} pressable={pressable} />)}</View>
           </View>
         </ScrollView>
 

@@ -16,8 +16,8 @@ const View = ({ children, onLayout }: { children?: React.ReactNode; onLayout?: (
 
 const noop = () => {}
 const animatedObj = {
-  start: (cb?: () => void) => {
-    cb?.()
+  start: (cb?: (result: { finished: boolean }) => void) => {
+    cb?.({ finished: true })
   },
   stop: noop,
   reset: noop

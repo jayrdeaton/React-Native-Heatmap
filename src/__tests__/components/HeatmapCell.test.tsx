@@ -1,4 +1,5 @@
-import { fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render } from '@testing-library/react'
+import type React from 'react'
 import * as ReactNative from 'react-native'
 import { Animated, Platform } from 'react-native'
 import * as svg from 'react-native-svg'
@@ -87,37 +88,172 @@ describe('HeatmapCell', () => {
     })
   })
 
-  describe('data fade animation (animated=true)', () => {
-    it('triggers fade-in timing when value goes from 0 to positive', () => {
-      const timingSpy = jest.spyOn(Animated, 'timing')
-      const { rerender } = render(<HeatmapCell {...baseProps} animated value={0} normalizedValue={0} />)
-      timingSpy.mockClear()
-      rerender(<HeatmapCell {...baseProps} animated value={5} normalizedValue={0.5} />)
-      expect(timingSpy).toHaveBeenCalled()
+  // A day's next look fades in over the one it shows, on its column's delay, and the looks under it go once it's in
+  describe('fading to the next look (animated=true)', () => {
+    const A = '#216e39'
+    const B = '#da3633'
+    const C = '#8957e5'
+    const D = '#d29922'
+
+    // Each Rect as an element carrying its fill, in drawing order (bottom first), so a test reads what the cell draws now
+    const fills = (container: HTMLElement) => Array.from(container.querySelectorAll('[data-fill]')).map((element) => element.getAttribute('data-fill'))
+    beforeEach(() => {
+      jest.spyOn(svg, 'Rect').mockImplementation(((props: { fill?: string }) => <i data-fill={props.fill} />) as never)
     })
 
-    it('triggers fade-out timing when value goes from positive to 0', () => {
-      const timingSpy = jest.spyOn(Animated, 'timing')
-      const { rerender } = render(<HeatmapCell {...baseProps} animated value={5} normalizedValue={0.5} />)
-      timingSpy.mockClear()
-      rerender(<HeatmapCell {...baseProps} animated value={0} normalizedValue={0} />)
-      expect(timingSpy).toHaveBeenCalled()
+    // Animated.timing as fades the test finishes, or sees stopped, itself
+    const holdFades = () => {
+      const fades: { config: Animated.TimingAnimationConfig; finish: () => void; stop: jest.Mock }[] = []
+      jest.spyOn(Animated, 'timing').mockImplementation((_value, config) => {
+        let done: Animated.EndCallback | undefined
+        const fade = { config, finish: () => act(() => done?.({ finished: true })), stop: jest.fn(() => done?.({ finished: false })) }
+        fades.push(fade)
+        return { start: (callback?: Animated.EndCallback) => (done = callback), stop: fade.stop, reset: () => {} } as unknown as Animated.CompositeAnimation
+      })
+      return fades
+    }
+
+    const cell = (props: Partial<React.ComponentProps<typeof HeatmapCell>>) => <HeatmapCell {...baseProps} animated dataFadeDelay={70} {...props} />
+
+    it('shows a day that has data when it mounts at once', () => {
+      const timing = jest.spyOn(Animated, 'timing')
+      const { container } = render(cell({ color: A }))
+      expect(timing).not.toHaveBeenCalled()
+      expect(fills(container)).toEqual([baseProps.emptyColor, A])
     })
 
-    it('does not trigger fade timing when value stays positive across a rerender', () => {
-      const timingSpy = jest.spyOn(Animated, 'timing')
-      const { rerender } = render(<HeatmapCell {...baseProps} animated value={5} normalizedValue={0.5} />)
-      timingSpy.mockClear()
-      rerender(<HeatmapCell {...baseProps} animated value={8} normalizedValue={0.8} />)
-      expect(timingSpy).not.toHaveBeenCalled()
+    it('fades data in on its column delay when it arrives, as the first load ripples in', () => {
+      const fades = holdFades()
+      const { container, rerender } = render(cell({ value: 0, normalizedValue: 0 }))
+      expect(fills(container)).toEqual([baseProps.emptyColor])
+      rerender(cell({ color: A }))
+      expect(fades.map((fade) => fade.config)).toEqual([{ toValue: 1, duration: 350, delay: 70, useNativeDriver: true }])
+      expect(fills(container)).toEqual([baseProps.emptyColor, A])
     })
 
-    it('does not trigger fade timing when animated is false', () => {
-      const timingSpy = jest.spyOn(Animated, 'timing')
-      const { rerender } = render(<HeatmapCell {...baseProps} animated={false} value={0} normalizedValue={0} />)
-      timingSpy.mockClear()
-      rerender(<HeatmapCell {...baseProps} animated={false} value={5} normalizedValue={0.5} />)
-      expect(timingSpy).not.toHaveBeenCalled()
+    it('fades a new color in over the old one on its delay, then drops the old one', () => {
+      const fades = holdFades()
+      const { container, rerender } = render(cell({ color: A }))
+      rerender(cell({ color: B, dataFadeDelay: 140 }))
+      expect(fades.map((fade) => fade.config.delay)).toEqual([140])
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, B])
+      fades[0].finish()
+      expect(fills(container)).toEqual([baseProps.emptyColor, B])
+    })
+
+    it('fades out to empty on its delay too, rather than all at once', () => {
+      const fades = holdFades()
+      const { container, rerender } = render(cell({ color: A }))
+      rerender(cell({ value: 0, normalizedValue: 0, color: baseProps.emptyColor }))
+      expect(fades.map((fade) => fade.config)).toEqual([{ toValue: 1, duration: 350, delay: 70, useNativeDriver: true }])
+      // The empty color fades in over the data, which reads as the data fading out
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, baseProps.emptyColor])
+      fades[0].finish()
+      expect(fills(container)).toEqual([baseProps.emptyColor])
+    })
+
+    it('stops a fade where it is when a newer look arrives, keeping it drawn over the look before', () => {
+      const fades = holdFades()
+      const { container, rerender } = render(cell({ color: A }))
+      rerender(cell({ color: B }))
+      rerender(cell({ color: C }))
+      expect(fades[0].stop).toHaveBeenCalled()
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, B, C])
+      fades[1].finish()
+      expect(fills(container)).toEqual([baseProps.emptyColor, C])
+    })
+
+    it('holds at most four looks while fades overlap, dropping the oldest caught mid-fade but never the one it settled on', () => {
+      holdFades()
+      const E = '#3fb950'
+      const { container, rerender } = render(cell({ color: A }))
+      rerender(cell({ color: B }))
+      rerender(cell({ color: C }))
+      rerender(cell({ color: D }))
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, B, C, D])
+      // A is the only look drawn whole: dropped, the day showed empty for a frame
+      rerender(cell({ color: E }))
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, C, D, E])
+    })
+
+    it("doesn't fade for data that draws the same", () => {
+      const timing = jest.spyOn(Animated, 'timing')
+      const { rerender } = render(cell({ color: A, cellMode: 'stacked', segments: SEGMENTS }))
+      rerender(cell({ color: A, cellMode: 'stacked', segments: SEGMENTS.map((segment) => ({ ...segment })) }))
+      // A solid day draws only its color, so a new value in the same shade isn't a new look
+      render(cell({ color: A, value: 5, normalizedValue: 0.5 })).rerender(cell({ color: A, value: 8, normalizedValue: 0.8 }))
+      expect(timing).not.toHaveBeenCalled()
+    })
+
+    it('changes at once when not animated, or while a renderCell draws the day', () => {
+      const timing = jest.spyOn(Animated, 'timing')
+      const unanimated = render(cell({ animated: false, color: A }))
+      unanimated.rerender(cell({ animated: false, color: B }))
+      expect(fills(unanimated.container)).toEqual([B])
+
+      const renderCell = () => null
+      const custom = render(cell({ color: A, renderCell }))
+      custom.rerender(cell({ color: B, renderCell }))
+      custom.rerender(cell({ color: B }))
+      expect(fills(custom.container)).toEqual([baseProps.emptyColor, B])
+      expect(timing).not.toHaveBeenCalled()
+    })
+
+    it('outlines the day once, over every look, so the outline never fades', () => {
+      holdFades()
+      const { container, rerender } = render(cell({ color: A, isSelected: true }))
+      rerender(cell({ color: B, isSelected: true }))
+      expect(fills(container)).toEqual([baseProps.emptyColor, A, B, 'none'])
+    })
+
+    describe('on web', () => {
+      beforeEach(() => {
+        Object.assign(Platform, { OS: 'web' })
+        jest.useFakeTimers()
+      })
+      afterEach(() => {
+        Object.assign(Platform, { OS: 'ios' })
+        jest.useRealTimers()
+      })
+
+      // The CSS fade of each layer drawn since the spy was last cleared, merged into one style
+      const fadeStyles = (view: jest.SpyInstance) =>
+        view.mock.calls
+          .map(([props]) => [props.style].flat(Infinity).filter(Boolean))
+          .filter((parts) => parts.some((part) => part.animationKeyframes?.['0%']?.opacity === 0))
+          .map((parts) => Object.assign({}, ...parts))
+
+      it('fades with a CSS animation on its delay, pausing one caught mid-fade, and settles once the newest is in', () => {
+        const timing = jest.spyOn(Animated, 'timing')
+        const view = jest.spyOn(ReactNative, 'View')
+        const { container, rerender } = render(cell({ color: A }))
+        rerender(cell({ color: B, dataFadeDelay: 140 }))
+        expect(fadeStyles(view).at(-1)).toEqual({
+          animationDelay: '140ms',
+          animationDuration: '350ms',
+          animationFillMode: 'both',
+          animationKeyframes: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+          animationPlayState: 'running',
+          animationTimingFunction: 'cubic-bezier(0.385, 0.05, 0.615, 0.95)',
+          left: 0,
+          position: 'absolute',
+          top: 0
+        })
+
+        view.mockClear()
+        rerender(cell({ color: C }))
+        expect(fadeStyles(view).map((style) => [style.animationDelay, style.animationPlayState])).toEqual([
+          ['140ms', 'paused'],
+          ['70ms', 'running']
+        ])
+        expect(fills(container)).toEqual([baseProps.emptyColor, A, B, C])
+
+        act(() => jest.advanceTimersByTime(70 + 349))
+        expect(fills(container)).toEqual([baseProps.emptyColor, A, B, C])
+        act(() => jest.advanceTimersByTime(1))
+        expect(fills(container)).toEqual([baseProps.emptyColor, C])
+        expect(timing).not.toHaveBeenCalled()
+      })
     })
   })
 

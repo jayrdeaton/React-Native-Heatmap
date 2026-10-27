@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react'
 import type React from 'react'
+import { Animated } from 'react-native'
 
 import { WeekColumn } from '../../components/WeekColumn'
 import type { DataPoint } from '../../types'
@@ -133,5 +134,28 @@ describe('WeekColumn', () => {
         totalColumns: 5
       })
     ).not.toThrow()
+  })
+
+  describe('the fade wave', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    const delayWhenDataArrives = (props: Partial<WeekColumnProps>) => {
+      const timing = jest.spyOn(Animated, 'timing')
+      timing.mockClear()
+      const { rerender } = renderWeekColumn({ animated: true, ...props })
+      const dataMap = new Map<string, DataPoint>([['2026-01-07', { date: '2026-01-07', value: 5 }]])
+      rerender(<WeekColumn week={WEEK} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode='solid' columnIndex={0} totalColumns={1} animationDirection='ltr' animationDuration={350} animated {...props} />)
+      return timing.mock.calls.map(([, config]) => config.delay)
+    }
+
+    it('delays each fade by the wave step for every column from where the wave starts', () => {
+      // Right to left, the wave starts at the last column, three columns from this one
+      expect(delayWhenDataArrives({ columnIndex: 0, totalColumns: 4, animationDirection: 'rtl', waveStep: 20 })).toEqual([60])
+      expect(delayWhenDataArrives({ columnIndex: 2, totalColumns: 4, animationDirection: 'ltr', waveStep: 20 })).toEqual([40])
+    })
+
+    it('takes a tenth of animationDuration a column without a wave step', () => {
+      expect(delayWhenDataArrives({ columnIndex: 0, totalColumns: 4, animationDirection: 'rtl' })).toEqual([105])
+    })
   })
 })

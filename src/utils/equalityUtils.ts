@@ -11,7 +11,7 @@ function sameRecord(a?: Record<string, unknown>, b?: Record<string, unknown>): b
   return keys.length === Object.keys(b).length && keys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && Object.is(a[key], b[key]))
 }
 
-function sameSegments(a?: Segment[], b?: Segment[]): boolean {
+export function sameSegments(a?: Segment[], b?: Segment[]): boolean {
   if (a === b) return true
   if (!a || !b || a.length !== b.length) return false
   return a.every((segment, i) => segment.color === b[i].color && segment.value === b[i].value && segment.weight === b[i].weight)

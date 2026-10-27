@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { Animated } from 'react-native'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
@@ -221,6 +222,35 @@ describe('Heatmap.Calendar', () => {
       rerender(<Heatmap.Calendar data={copy().map((point) => (point.date === '2026-01-15' ? { ...point, value: 4 } : point))} startDate={FIXED_START} endDate={FIXED_END} renderCell={renderCell} />)
       expect(renderCell).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-01-15', value: 4 }), '2026-01-15')
       expect(screen.getByLabelText('2026-01-15: 4 events')).toBeTruthy()
+    })
+  })
+
+  // The mock's View measures 300pt wide: 10pt cells step 14pt, so 22 weeks are in view, and the wave crosses them in
+  // 420ms (1.2 animationDurations), 20ms a week, where it would take 35ms a week at full step
+  describe('the fade wave', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    it('crosses the weeks in view in at most 1.2 animationDurations, from today', async () => {
+      const timing = jest.spyOn(Animated, 'timing')
+      const theme = { cellSize: 10, gutterSize: 2 }
+      const { rerender } = render(<Heatmap.Calendar animated data={[]} startDate={FIXED_START} endDate={FIXED_END} theme={theme} />)
+      await screen.findByLabelText('2026-05-17: 0 events')
+      timing.mockClear()
+
+      // The newest week, and two weeks before it
+      rerender(
+        <Heatmap.Calendar
+          animated
+          data={[
+            { date: '2026-05-17', value: 4 },
+            { date: '2026-05-03', value: 2 }
+          ]}
+          startDate={FIXED_START}
+          endDate={FIXED_END}
+          theme={theme}
+        />
+      )
+      expect(timing.mock.calls.map(([, config]) => config.delay).sort()).toEqual([0, 40])
     })
   })
 

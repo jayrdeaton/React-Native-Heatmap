@@ -50,11 +50,14 @@ src/
     HeatmapCalendar.tsx           - public .Calendar: year grid, horizontal scroll + onEndReached, month/day labels, the selected day
                                      (its own, or the host's with selectedDate, taps then only reported) and the tooltip drawn from it;
                                      draws the cells after the first idle moment (requestIdleCallback, setTimeout where it's missing);
-                                     the whole calendar is a Pressable (pressable or React Native's) that clears the selection
-    HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority),
-                                     press/pulse/data-fade animations via RN's built-in Animated API, except today's pulse on web,
-                                     a CSS keyframe animation on a view around the cell
-    WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state
+                                     the whole calendar is a Pressable (pressable or React Native's) that clears the selection;
+                                     measures how many weeks are in view for the ripple's step (waveStep)
+    HeatmapCell.tsx                - one SVG cell; renders all six cellMode variants (solid/gradient/density/stacked/dots/priority);
+                                     animated, it holds a stack of looks, its next one fading in over the rest on its column's delay
+                                     (the ripple); press/pulse/fade animations via RN's built-in Animated API, except on web, where
+                                     the fade and today's pulse are CSS keyframe animations
+    WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state and its fade's
+                                     delay (the wave step times its distance from where the wave starts)
     DayLabels.tsx                  - Mon/Wed/Fri row labels
     MonthLabels.tsx                - month-name labels positioned by week index
     Tooltip.tsx                    - floating tooltip above a pressed cell, or the caller's renderTooltip
@@ -79,9 +82,10 @@ src/
                                      time-label formatting for .Timeline, bucket labels for .Grid
     gridUtils.ts                   - .Grid's cells (window, alignment, blanks, fill, pending, mark) and its accessibility labels,
                                      kept pure so the tests can read the colors the mocks don't render
-    equalityUtils.ts               - sameDataPoints/sameTimelinePoints: whether two data arrays say the same thing, for useStable
+    equalityUtils.ts               - sameDataPoints/sameTimelinePoints: whether two data arrays say the same thing, for useStable;
+                                     sameSegments, which HeatmapCell also compares looks with
     layoutUtils.ts                 - cellPadding/cellPitch: the one step everything lined up with the cells uses (grid height, day
-                                     rows, month labels, each cell's own margins)
+                                     rows, month labels, each cell's own margins); waveStep, the ripple's delay per week
   __mocks__/
     react-native.ts                - jest mock: View fires onLayout once; Pressable/ScrollView render as real clickable/scrollable divs
                                      (Pressable's accessibilityState.selected as aria-selected; a press stops at the innermost one, as React
@@ -151,11 +155,24 @@ Found profiling Lumber's desktop app, where the React Compiler dropped a hand-wr
 - **Keyframe transforms must be CSS strings:** react-native-web 0.21 turns a `transform` array into CSS only at a style's top level (`preprocess`); inside `animationKeyframes` an array becomes a declaration the browser drops, so every step comes out empty and nothing moves. The first version did this; the jest mock can't catch it. It was caught by bundling a page with esbuild against Lumber's react-native-web (react-native-svg swapped for a DOM `<svg>` shim, since its web build imports native modules) and loading it offscreen in Lumber-Desktop's Electron: with strings, the keyframes read `scale(1)`/`scale(1.2)`, the wrapper's computed transform moved through 1.19, 1.09 and 1.01, and React made 0 commits a second at idle.
 - **Tests:** the cell suite spies on the mocked `View` and `Animated.View` (`jest.spyOn(ReactNative, 'View')`) to read the pulse's style and the transforms; the date and data tests spy on `buildWeekGrid`, `buildDataMap`, `parseDate`, `inferTimeBounds` and `buildTimeDataMap`. Each new test fails on the code before this change. `buildWeekGrid`'s daylight saving test only bites under a `TZ=` with daylight saving; it passed under America/New_York, America/Santiago, Europe/London, Australia/Lord_Howe, Asia/Bangkok and UTC.
 
+## Rippling to the next state (2026-10-27)
+
+Jay liked the calendar's load ripple and asked for changes to ripple too. Before, a day only faded when it went from no data to some (with the column's delay) or back (at once, with no delay), and every other change (a host's level filter, a new busiest day rescaling every shade) snapped. Now any change to what a day draws ripples.
+
+- **A stack of looks:** `HeatmapCell` keeps the looks it draws (`Look`: has data, mode, color, empty color, normalized value, segments) as layers over its empty base. A new look is pushed during render (state derived from props, as `useStable` does) and fades in over the rest on its column's delay; once it's in, the layers under it go. Fading the new color in over the old, rather than out to empty and back, blends them: an opaque color at opacity t over another is their mix at t, so a day passes through the shades between. Going empty is the empty color fading in over the data, so it waits for the wave too. `sameLook` compares only what a mode draws (a solid day only its color; segments by value), so a value in the same shade, or data rebuilt equal, doesn't fade.
+- **Interruptions:** a newer look arriving mid-fade stops the one in progress where it is (a stopped native animation holds its value; on web the layer's CSS animation is paused), so a day caught mid-fade carries on from its blend and one the wave hadn't reached still shows the look before. At most 4 layers (`MAX_LAYERS`); past that the oldest one caught mid-fade goes, never the bottom one, which is the only one drawn whole. A first version dropped the bottom one, and in the iOS simulator four quick level taps blanked the older weeks for a frame.
+- **Layers are opaque:** each draws its own empty color under it (the gradient mode's center otherwise showed the layer below), so dropping the layers under a finished one never changes the cell. The outline (today, selected) is its own layer over them all, so it never fades. Each layer's gradient and clip ids carry the layer's id, since web ids are global.
+- **The wave's cap:** `waveStep(animationDuration, weeksInView)` is a tenth of `animationDuration` a week (35ms), but no more than lets the wave cross the weeks in view in 1.2 animationDurations (420ms). A phone's 13 weeks keep the full step (12 steps of 35ms), and a 1200pt desktop window's 45 cross in the same time instead of 1.5s. `.Calendar` counts the weeks in view from its container's width (`onLayout`); before it's measured, the full step. The first load's ripple is the same wave, so it got quicker on wide screens too and stayed the same on phones.
+- **Web:** react-native-web runs Animated from JavaScript, a commit a frame, so on web a fading layer is a CSS keyframe animation (opacity 0 to 1, fill mode both so it waits at 0 through its delay), and a timer for its delay and duration settles it. Its curve, `cubic-bezier(0.385, 0.05, 0.615, 0.95)`, is Animated.timing's default `Easing.inOut(Easing.ease)` to within 0.35% (fitted numerically).
+- **When it doesn't fade:** not `animated`, or a `renderCell` drawing the day (Lumber's first sync), changes at once; a day with data when the cell mounts shows it at once.
+- **Checked** in Lumber in the iOS simulator (iPhone 18 Pro, RN 0.88, recorded and pulled apart frame by frame): the ERROR filter rippling from today across 14 weeks with each day blending, FATAL, clearing back to all exactly as before, and four quick taps with no blank frames after the fix. In Lumber Dev over CDP at 1200pt: 47 week delays from 0 to 496ms, every layer settled within about a second with none left paused, and two levels tapped 150ms apart leaving 36 layers paused mid-fade that held their opacity. Lumber's heatmap and screen tests pass on it. Not checked: Android, and the non-solid cell modes on a device (the tests draw all six).
+- **Tests:** `HeatmapCell.test.tsx` (`fading to the next look`) replaces `Rect` with an element carrying its fill, so a test reads the layers drawn in order, and holds `Animated.timing`'s fades to finish or stop them itself; 7 of its 10 tests fail on the cell before this change. `WeekColumn.test.tsx` and `HeatmapCalendar.test.tsx` cover the step (the mock View measures 300pt), `layoutUtils.test.ts` `waveStep`. The `react-native` mock's `start` callback now gets `{ finished: true }`.
+
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 309 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
+- 319 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - `.Grid` is the same: without `onCellPress` it's only Views, which the mock renders as nothing, so its windows, alignment, colors, pending cells, marks and labels are pinned in gridUtils.test.ts and the component tests press cells made buttons. The tests build times with local `Date`s (`new Date(2026, 9, 24, 9)`), so they pass in any time zone; checked on 2026-10-24 under `TZ=` Asia/Bangkok, Asia/Kolkata (half hour), America/New_York, Australia/Lord_Howe (half-hour daylight saving) and UTC
 - One bucketing, on the device's clock: `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above

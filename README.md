@@ -54,7 +54,9 @@ export default function App() {
 | `theme` | `Partial<HeatmapTheme>` | See below | Size, spacing, and color overrides. |
 | `showMonthLabels` | `boolean` | `true` | Show month name labels above the grid. |
 | `showDayLabels` | `boolean` | `true` | Show Mon / Wed / Fri labels on the left. |
-| `animated` | `boolean` | `false` | Enable all animations (load ripple, today pulse, press spring). |
+| `animated` | `boolean` | `false` | Enable all animations (the ripple, today pulse, press spring). |
+| `animationDirection` | `'ltr' \| 'rtl'` | `'rtl'` | Where the ripple starts: `'rtl'` from the newest week, `'ltr'` from the oldest. |
+| `animationDuration` | `number` | `350` | How long one day's fade takes, in ms. The ripple's spread and today's pulse are measured in it. |
 | `scrollEnabled` | `boolean` | `true` | Enable or disable horizontal scrolling. |
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a cell is tapped. |
 | `onSelectionChange` | `(date: string \| null) => void` | - | Called when the selected day (outlined, tooltip open) changes, with `null` once a second tap or a tap elsewhere clears it. For showing something about the selected day. With `selectedDate` set, it's the day a tap asks for. |
@@ -99,7 +101,7 @@ Pass `animated` to enable all animations. No extra dependencies - uses the built
 <Heatmap.Calendar data={data} animated />
 ```
 
-- **Load ripple**: cells fade and scale in on mount, radiating outward from today's column.
+- **Ripple**: when a day's data arrives or changes (new data, a filter, a new busiest day rescaling every shade), its next color fades in over the one it shows, on a delay that grows with each week from where the wave starts (today's column by default), so the change ripples across the calendar and every day passes through the shades between. The wave waits a tenth of `animationDuration` a week, but crosses the weeks in view in at most 1.2 `animationDuration`s, so it's as quick across a wide screen as a phone. A change arriving mid-wave carries on from where each day is, and days the wave hasn't reached keep their old color until it does. It runs natively on iOS and Android and as a CSS animation on web. A day that has data when the calendar first draws shows it at once, and days drawn by `renderCell` change at once.
 - **Today pulse**: the current day cell breathes with a looping scale animation, natively on iOS and Android and as a CSS animation on web, so it costs no JavaScript there. It's also outlined in `todayBorderColor`; set that to `'transparent'` to mark today by the pulse alone. The day whose tooltip is open is outlined in `selectedBorderColor`, today included.
 - **Press spring**: cells scale down on press and spring back on release.
 

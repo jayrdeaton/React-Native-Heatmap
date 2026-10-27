@@ -1,4 +1,4 @@
-import { cellPadding, cellPitch } from '../../utils/layoutUtils'
+import { cellPadding, cellPitch, waveStep } from '../../utils/layoutUtils'
 
 // Every part of the calendar that lines up with its cells steps by one pitch: a cell's square, its padding, and whatever of the
 // gutter the padding doesn't already make.
@@ -17,5 +17,15 @@ describe('layoutUtils', () => {
 
   it('makes up the rest of a wider gutter', () => {
     expect(cellPitch(14, 6)).toBe(20)
+  })
+
+  it('waits a tenth of animationDuration a column, unless the wave would then take over 1.2 durations to cross the weeks in view', () => {
+    expect(waveStep(350)).toBe(35)
+    expect(waveStep(350, 1)).toBe(35)
+    // A phone's 13 weeks: 12 steps of 35ms are exactly the 420ms
+    expect(waveStep(350, 13)).toBe(35)
+    // A wide window's 45 cross in the same 420ms, not 1.5s
+    expect(waveStep(350, 45)).toBeCloseTo(420 / 44)
+    expect(waveStep(200, 45)).toBeCloseTo(240 / 44)
   })
 })
