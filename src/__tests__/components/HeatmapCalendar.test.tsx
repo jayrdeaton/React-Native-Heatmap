@@ -91,6 +91,16 @@ describe('Heatmap.Calendar', () => {
     expect(container).toBeTruthy()
   })
 
+  it("dims the days before minDate and doesn't press them", async () => {
+    const onDayPress = jest.fn()
+    render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} minDate='2026-02-01' onDayPress={onDayPress} />)
+    const before = await screen.findByLabelText('2026-01-15: unavailable')
+    fireEvent.click(before)
+    expect(onDayPress).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByLabelText('2026-02-20: 12 events'))
+    expect(onDayPress).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-02-20' }), '2026-02-20')
+  })
+
   it('accepts animated prop without throwing', () => {
     expect(() => {
       render(<Heatmap.Calendar data={SAMPLE_DATA} startDate={FIXED_START} endDate={FIXED_END} animated={true} />)

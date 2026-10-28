@@ -7,6 +7,8 @@ export interface GridCell {
   /** The cell's color, or null while it's pending (drawn hollow). */
   fill: string | null
   pending: boolean
+  /** Before .Grid's minTime: dimmed, and not a button. Never pending. */
+  unavailable: boolean
   /** The color of the tick under it, or null for none. */
   mark: string | null
   /** The first cell of an aligned line that starts a new hour, day or week among lines of a share of one (6 hours of a
@@ -28,6 +30,7 @@ interface GridCellOptions {
   marks?: TimelineDataPoint[]
   markColor: string
   pendingBefore?: Date
+  minTime?: Date
 }
 
 type LineUnit = 'hour' | 'day' | 'week'
@@ -83,7 +86,7 @@ function opensUnit(start: Date, unit: LineUnit, weekStartsOn: number): boolean {
  * across the data's min to max as .Calendar does: a steady stream then reads steady, where min to max would spread
  * small differences over the whole scale.
  */
-export function buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end, colorScale, autoScale, marks, markColor, pendingBefore }: GridCellOptions): (GridCell | null)[][] {
+export function buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end, colorScale, autoScale, marks, markColor, pendingBefore, minTime }: GridCellOptions): (GridCell | null)[][] {
   const total = rows * columns
   const lineLength = fillDirection === 'row' ? columns : rows
   const lines = fillDirection === 'row' ? rows : columns
@@ -101,8 +104,9 @@ export function buildGridCells({ data, rows, columns, granularity, fillDirection
     if (mark.value > 0) markColors.set(bucketStart(new Date(mark.timestamp), granularity).getTime(), mark.color ?? markColor)
   }
   const pendingStart = pendingBefore ? bucketStart(pendingBefore, granularity).getTime() : -Infinity
+  const minStart = minTime ? bucketStart(minTime, granularity).getTime() : -Infinity
   const buckets: (TimeBucket | null)[] = starts.map((startTime) => (startTime.getTime() > last.getTime() ? null : { startTime, endTime: shiftBucket(startTime, granularity, 1), granularity, value: values.get(startTime.getTime()) ?? 0 }))
-  const busiest = Math.max(0, ...buckets.map((bucket) => (bucket && bucket.startTime.getTime() >= pendingStart ? bucket.value : 0)))
+  const busiest = Math.max(0, ...buckets.map((bucket) => (bucket && bucket.startTime.getTime() >= Math.max(pendingStart, minStart) ? bucket.value : 0)))
 
   const grid: (GridCell | null)[][] = Array.from({ length: rows }, () => [])
   buckets.forEach((bucket, k) => {
@@ -111,10 +115,11 @@ export function buildGridCells({ data, rows, columns, granularity, fillDirection
       grid[row].push(null)
       return
     }
-    const pending = bucket.startTime.getTime() < pendingStart
+    const unavailable = bucket.startTime.getTime() < minStart
+    const pending = !unavailable && bucket.startTime.getTime() < pendingStart
     const fill = pending ? null : autoScale ? getAutoScaleColor(bucket.value, 0, busiest, colorScale) : getColorForValue(bucket.value, colorScale)
     const boundary = unit !== null && firstLine !== null && k % lineLength === 0 && opensUnit(bucket.startTime, unit, weekStartsOn)
-    grid[row].push({ bucket, fill, pending, mark: markColors.get(bucket.startTime.getTime()) ?? null, boundary })
+    grid[row].push({ bucket, fill, pending, unavailable, mark: markColors.get(bucket.startTime.getTime()) ?? null, boundary })
   })
   return grid
 }
@@ -133,6 +138,6 @@ export function getGridLabel(grid: (GridCell | null)[][], granularity: TimelineG
 /** One cell read as a button: `October 24, 2026, 09:00: 12 events, marked`. */
 export function getCellLabel(cell: GridCell, valueLabel: string): string {
   const { startTime, granularity, value } = cell.bucket
-  const count = cell.pending ? 'not loaded yet' : value === 0 ? `no ${valueLabel}s` : `${value} ${plural(value, valueLabel)}`
+  const count = cell.unavailable ? 'unavailable' : cell.pending ? 'not loaded yet' : value === 0 ? `no ${valueLabel}s` : `${value} ${plural(value, valueLabel)}`
   return `${formatBucketLabel(startTime, granularity)}: ${count}${cell.mark ? ', marked' : ''}`
 }

@@ -25,12 +25,14 @@ interface WeekColumnProps {
   /** How long the fade waits per column from where the wave starts (see waveStep); the full step when left out */
   waveStep?: number
   selectedDate?: string | null
+  /** Days before it are dimmed and can't be pressed (see .Calendar's minDate) */
+  minDate?: string
   pressable?: PressableComponent
 }
 
 const todayString = getTodayString()
 
-function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration, waveStep, selectedDate, pressable }: WeekColumnProps) {
+function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoScale, dataRange, onCellPress, animated, renderCell, columnIndex, totalColumns, animationDirection, animationDuration, waveStep, selectedDate, minDate, pressable }: WeekColumnProps) {
   const { cellSize, cellRadius, gutterSize, todayBorderColor, selectedBorderColor } = theme
   const pitch = cellPitch(cellSize, gutterSize)
   const emptyColor = colorScale.emptyColor ?? colorScale.colors[0]
@@ -51,7 +53,7 @@ function WeekColumnComponent({ week, dataMap, colorScale, theme, cellMode, autoS
         const color = point?.color ?? (autoScale && dataRange ? getAutoScaleColor(effectiveValue, dataRange.min, dataRange.max, colorScale) : getColorForValue(effectiveValue, colorScale))
         const normalizedValue = getNormalizedValue(effectiveValue, colorScale, dataRange?.max)
 
-        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} isSelected={date === selectedDate} animated={animated} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} selectedBorderColor={selectedBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} pressable={pressable} />
+        return <HeatmapCell key={date} date={date} value={value} color={color} emptyColor={emptyColor} size={cellSize} radius={cellRadius} gutter={gutterSize} cellMode={cellMode} normalizedValue={normalizedValue} segments={segments} onPress={onCellPress} isToday={date === todayString} isSelected={date === selectedDate} animated={animated} renderCell={renderCell} dataPoint={point} todayBorderColor={todayBorderColor} selectedBorderColor={selectedBorderColor} dataFadeDelay={dataFadeDelay} animationDuration={animationDuration} unavailable={!!minDate && date < minDate} pressable={pressable} />
       })}
     </View>
   )

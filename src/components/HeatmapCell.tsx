@@ -29,6 +29,8 @@ interface HeatmapCellProps {
   selectedBorderColor: string
   dataFadeDelay?: number
   animationDuration?: number
+  /** Before the calendar's minDate: dimmed, and not a button */
+  unavailable?: boolean
   pressable?: PressableComponent
 }
 
@@ -159,7 +161,7 @@ function drawLook({ hasData, cellMode, color, emptyColor, normalizedValue, segme
   )
 }
 
-function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350, pressable }: HeatmapCellProps) {
+function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gutter, cellMode, normalizedValue, segments, onPress, isToday = false, isSelected = false, animated: isAnimated = false, renderCell, dataPoint, todayBorderColor, selectedBorderColor, dataFadeDelay = 0, animationDuration = 350, unavailable = false, pressable }: HeatmapCellProps) {
   // A host's pressable (a haptic on touch-down, say) is handed the cell's own onPressIn/onPressOut, so it adds to the press animation
   const Pressable = pressable ?? NativePressable
   const [pressScale] = useState(() => new Animated.Value(1))
@@ -257,7 +259,7 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
   // On web the pulse goes on a view of its own around the cell, since a CSS animation of transform would override the
   // press spring's transform on the same view. The two scales compose about the same center, as they do natively
   return (
-    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={!onPress} accessibilityLabel={`${date}: ${value} ${value === 1 ? 'event' : 'events'}`} accessibilityRole='button' style={{ padding: cellPad, marginRight: extra, marginBottom: extra }}>
+    <Pressable onPress={handlePress} onPressIn={unavailable ? undefined : handlePressIn} onPressOut={unavailable ? undefined : handlePressOut} disabled={!onPress || unavailable} accessibilityLabel={`${date}: ${unavailable ? 'unavailable' : `${value} ${value === 1 ? 'event' : 'events'}`}`} accessibilityRole='button' accessibilityState={unavailable ? { disabled: true } : undefined} style={[{ padding: cellPad, marginRight: extra, marginBottom: extra }, unavailable && styles.dimmed]}>
       {cssPulse ? <View style={[styles.pulse, css({ animationDuration: `${animationDuration * PULSE_HALF * 2}ms` })]}>{cell}</View> : cell}
     </Pressable>
   )
@@ -267,6 +269,8 @@ function HeatmapCellComponent({ date, value, color, emptyColor, size, radius, gu
 const css = (style: Record<string, unknown>) => style as ViewStyle
 
 const styles = StyleSheet.create({
+  // .Month's out-of-range day
+  dimmed: { opacity: 0.3 },
   overlay: { left: 0, position: 'absolute', top: 0 },
   // The native loop's look: 1 to 1.2 and back, each half eased with Easing.inOut(Easing.sin), whose curve this
   // cubic-bezier follows to within 0.2%. A timing function applies to each interval between keyframes, so to each half

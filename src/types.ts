@@ -118,6 +118,9 @@ export interface HeatmapProps {
    * clear or move the selection from outside (a clear button beside what it shows for the day); taps only report through
    * onSelectionChange. Left undefined, the calendar keeps its own selection. */
   selectedDate?: string | null
+  /** The first day the data covers (YYYY-MM-DD). Days before it are dimmed and can't be pressed, as .Month's are, so a
+   * day with no data reads apart from one the data doesn't reach: a retention cutoff, say, past which nothing is kept. */
+  minDate?: string
   renderTooltip?: (data: TooltipData) => React.ReactNode
   renderCell?: (data: DataPoint | null, date: string) => React.ReactNode
   animated?: boolean
@@ -214,6 +217,9 @@ export interface GridProps {
   marks?: TimelineDataPoint[]
   /** Cells before the one holding this moment are drawn hollow, for data still loading (a first sync paging newest first). */
   pendingBefore?: Date
+  /** Cells before the one holding this moment are dimmed and can't be pressed, as .Calendar's days before its minDate are:
+   * time the data doesn't reach (a retention cutoff), apart from time with nothing in it. They outrank pendingBefore. */
+  minTime?: Date
   /** The cell holding this moment is outlined in the theme's selectedColor. The host keeps it, from onCellPress, as
    * .Calendar's selectedDate. */
   selected?: Date | null

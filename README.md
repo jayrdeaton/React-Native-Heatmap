@@ -61,6 +61,7 @@ export default function App() {
 | `onDayPress` | `(point: DataPoint \| null, date: string) => void` | - | Called when a cell is tapped. |
 | `onSelectionChange` | `(date: string \| null) => void` | - | Called when the selected day (outlined, tooltip open) changes, with `null` once a second tap or a tap elsewhere clears it. For showing something about the selected day. With `selectedDate` set, it's the day a tap asks for. |
 | `selectedDate` | `string \| null` | - | The selected day, `YYYY-MM-DD`, or `null` for none. Set, the calendar follows it instead of its own taps (which only report through `onSelectionChange`), so you can clear or move the selection from outside, say with a clear button next to what you show for the day. Leave it undefined and the calendar keeps its own. |
+| `minDate` | `string` | - | The first day the data covers, `YYYY-MM-DD`. Days before it are dimmed and can't be pressed, as `Heatmap.Month`'s are, so a day the data doesn't reach (past a retention cutoff, say) reads apart from a quiet one. |
 | `onEndReached` | `() => void` | - | Called when the user scrolls near the right edge. Use for infinite scroll. |
 | `onEndReachedThreshold` | `number` | `0.1` | Fraction of total width from the right edge that triggers `onEndReached`. |
 | `renderTooltip` | `(data: TooltipData) => ReactNode` | - | Replace the default tooltip with a custom component. |
@@ -334,6 +335,7 @@ With `animated`, a cell whose value or color changes fades its next look in over
 | `theme` | `Partial<GridTheme>` | `{ cellRadius: 2, gap: 2, markHeight: 3, markGap: 2, markColor: '#cf222e', boundaryGap: 0, selectedColor: '#0f0f0f', backgroundColor: 'transparent' }` | Sizes and colors. `cellHeight` fixes each cell's height (10 in one row, square in several by default); `pendingColor` outlines pending cells (the scale's top color by default); `boundaryGap` is added before a row or column that opens a new day or hour among shares of one; dark `colorScheme` makes `markColor` `'#f85149'` and `selectedColor` `'#f0f0f0'`. |
 | `marks` | `TimelineDataPoint[]` | - | A tick under each cell holding a point above 0. Set it (even to `[]`) to reserve the tick rows. |
 | `pendingBefore` | `Date` | - | Cells before the one holding this moment are hollow. |
+| `minTime` | `Date` | - | Cells before the one holding this moment are dimmed and can't be pressed: time the data doesn't reach, apart from time with nothing in it. Outranks `pendingBefore`. |
 | `selected` | `Date \| null` | - | Outlines the cell holding this moment in `theme.selectedColor`. You keep it, from `onCellPress`. |
 | `animated` | `boolean` | `false` | Ripple each change across the columns, as `Heatmap.Calendar` does. |
 | `animationDirection` | `'ltr' \| 'rtl'` | `'rtl'` | Where the ripple starts: the newest column, or the oldest. |

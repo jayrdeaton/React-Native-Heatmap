@@ -12,7 +12,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel, pressable }: HeatmapProps) {
+export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, minDate, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel, pressable }: HeatmapProps) {
   const Pressable = pressable ?? NativePressable
   const [ready, setReady] = useState(false)
   const [ownSelectedDate, setOwnSelectedDate] = useState<string | null>(null)
@@ -118,7 +118,7 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
         <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
           <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
             {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} waveStep={step} selectedDate={selectedDate} pressable={pressable} />)}</View>
+            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} waveStep={step} selectedDate={selectedDate} minDate={minDate} pressable={pressable} />)}</View>
           </View>
         </ScrollView>
 

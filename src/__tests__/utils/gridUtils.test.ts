@@ -63,6 +63,14 @@ describe('buildGridCells in one row', () => {
     expect(strip({ pendingBefore: hour(1) }).some((cell) => cell.pending)).toBe(false)
   })
 
+  it('dims the cells before minTime, scales the rest without them, and outranks pendingBefore', () => {
+    const cells = strip({ data: [point(hour(6), 40), point(hour(8), 2)], minTime: new Date(2026, 9, 24, 7, 30), pendingBefore: hour(9) })
+    expect(cells.map((cell) => cell.unavailable)).toEqual([true, false, false, false])
+    expect(cells.map((cell) => cell.pending)).toEqual([false, true, true, false])
+    expect(strip({ data: [point(hour(6), 40), point(hour(8), 2)], minTime: hour(7) })[2].fill).toBe('#333333')
+    expect(getCellLabel(cells[0], 'log')).toBe('October 24, 2026, 06:00: unavailable')
+  })
+
   it('marks the cells holding a mark above 0, in its own color or the default', () => {
     const cells = strip({ marks: [point(hour(7), 1), point(hour(8), 1, '#e879f9'), point(hour(9), 0)] })
     expect(cells.map((cell) => cell.mark)).toEqual([null, '#cf222e', '#e879f9', null])

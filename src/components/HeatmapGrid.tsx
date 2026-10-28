@@ -19,11 +19,11 @@ const BAR_HIT_SLOP = { top: 8, bottom: 8 }
 // color scale as .Calendar. One row is a pulse line for a list row or a card; 7 by 24 hours a week by hour; 7 rows of
 // days filled down columns, .Calendar's shape; 6 rows of hours filled down columns, a day in 4 columns. Static unless
 // onCellPress is given.
-export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, selected, onCellPress, valueLabel = 'event', accessibilityLabel, style, pressable, animated = false, animationDirection = 'rtl', animationDuration = 350 }: GridProps) {
+export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, minTime, selected, onCellPress, valueLabel = 'event', accessibilityLabel, style, pressable, animated = false, animationDirection = 'rtl', animationDuration = 350 }: GridProps) {
   const Pressable = pressable ?? NativePressable
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeGridTheme(themeProp, colorScheme), [themeProp, colorScheme])
-  const grid = buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end: endTime ?? new Date(), colorScale, autoScale, marks, markColor: theme.markColor, pendingBefore })
+  const grid = buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end: endTime ?? new Date(), colorScale, autoScale, marks, markColor: theme.markColor, pendingBefore, minTime })
 
   const { backgroundColor, boundaryGap, cellHeight = rows === 1 ? SINGLE_ROW_HEIGHT : undefined, cellRadius, gap, markGap, markHeight, pendingColor = colorScale.colors[colorScale.colors.length - 1], selectedColor } = theme
   const shape = cellHeight === undefined ? styles.square : { height: cellHeight }
@@ -50,16 +50,18 @@ export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day',
     if (bucket) latestRef.current.onCellPress?.(bucket)
   }, [])
 
-  const look = (cell: GridCell | null, c: number) => [styles.cell, shape, { borderRadius: cellRadius }, columnApart(c) ? { marginLeft: columnApart(c) } : null, cell?.pending ? [styles.pending, { borderColor: pendingColor }] : { backgroundColor: cell?.fill ?? undefined }]
+  const look = (cell: GridCell | null, c: number) => [styles.cell, shape, { borderRadius: cellRadius }, columnApart(c) ? { marginLeft: columnApart(c) } : null, cell?.pending ? [styles.pending, { borderColor: pendingColor }] : { backgroundColor: cell?.fill ?? undefined }, cell?.unavailable && styles.dimmed]
+  // A cell before minTime isn't a button: there's nothing there to show
+  const pressableCell = (cell: GridCell | null): cell is GridCell => cell !== null && !cell.unavailable && !!onCellPress
   const outline = <View style={[styles.fill, styles.selected, { borderRadius: cellRadius, borderColor: selectedColor }]} />
 
   // Cells are keyed by their time, so when the grid moves on a cell keeps its look (and its fade) as it moves over a column
   const drawCell = (cell: GridCell | null, c: number) => {
     const key = cell ? cell.bucket.startTime.getTime() : `blank-${c}`
-    if (cell && animated) return <GridCellView key={key} start={cell.bucket.startTime.getTime()} fill={cell.fill} pending={cell.pending} pendingColor={pendingColor} radius={cellRadius} height={cellHeight} marginLeft={columnApart(c)} selected={isSelected(cell)} selectedColor={selectedColor} delay={delayOf(c)} duration={animationDuration} label={onCellPress ? getCellLabel(cell, valueLabel) : undefined} onPress={onCellPress ? handlePress : undefined} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} pressable={Pressable} />
-    if (cell && onCellPress)
+    if (cell && animated) return <GridCellView key={key} start={cell.bucket.startTime.getTime()} fill={cell.fill} pending={cell.pending} unavailable={cell.unavailable} pendingColor={pendingColor} radius={cellRadius} height={cellHeight} marginLeft={columnApart(c)} selected={isSelected(cell)} selectedColor={selectedColor} delay={delayOf(c)} duration={animationDuration} label={pressableCell(cell) ? getCellLabel(cell, valueLabel) : undefined} onPress={pressableCell(cell) ? handlePress : undefined} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} pressable={Pressable} />
+    if (pressableCell(cell))
       return (
-        <Pressable key={key} onPress={() => onCellPress(cell.bucket)} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} accessibilityRole='button' accessibilityLabel={getCellLabel(cell, valueLabel)} style={({ pressed }) => [look(cell, c), pressed && styles.pressed]}>
+        <Pressable key={key} onPress={() => onCellPress?.(cell.bucket)} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} accessibilityRole='button' accessibilityLabel={getCellLabel(cell, valueLabel)} style={({ pressed }) => [look(cell, c), pressed && styles.pressed]}>
           {isSelected(cell) ? outline : null}
         </Pressable>
       )
@@ -102,6 +104,7 @@ interface GridCellViewProps {
   start: number
   fill: string | null
   pending: boolean
+  unavailable: boolean
   pendingColor: string
   radius: number
   /** Undefined for a square cell. */
@@ -120,9 +123,9 @@ interface GridCellViewProps {
 // An animated grid's cell: its looks stacked as .Calendar's days are (see useFadeLayers), each a fill or a hollow pending
 // outline, under the selection's outline, which never fades. Its props are all values, so a grid redrawn with the same
 // data redraws none of them
-const GridCellView = memo(function GridCellView({ start, fill, pending, pendingColor, radius, height, marginLeft, selected, selectedColor, delay, duration, label, onPress, hitSlop, pressable: Pressable }: GridCellViewProps) {
+const GridCellView = memo(function GridCellView({ start, fill, pending, unavailable, pendingColor, radius, height, marginLeft, selected, selectedColor, delay, duration, label, onPress, hitSlop, pressable: Pressable }: GridCellViewProps) {
   const { layers, top } = useFadeLayers<CellLook>({ fill, pending }, { same: sameCellLook, fades: true, delay, duration, canFade: neitherPending })
-  const box = [styles.cell, height === undefined ? styles.square : { height }, marginLeft ? { marginLeft } : null]
+  const box = [styles.cell, height === undefined ? styles.square : { height }, marginLeft ? { marginLeft } : null, unavailable && styles.dimmed]
   const content = (
     <>
       {layers.map((layer) => (
@@ -141,6 +144,8 @@ const GridCellView = memo(function GridCellView({ start, fill, pending, pendingC
 
 const styles = StyleSheet.create({
   cell: { flex: 1 },
+  // .Month's out-of-range day
+  dimmed: { opacity: 0.3 },
   fill: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   pending: { borderWidth: 1 },
   pressed: { opacity: 0.6 },

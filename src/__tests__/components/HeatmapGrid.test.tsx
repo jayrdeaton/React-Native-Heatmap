@@ -42,6 +42,17 @@ describe('Heatmap.Grid', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
 
+  it('makes no button of a cell before minTime, animated or not', () => {
+    for (const animated of [false, true]) {
+      const onCellPress = jest.fn()
+      const { unmount } = render(<Heatmap.Grid data={DATA} columns={4} granularity='hour' endTime={END} minTime={new Date(2026, 9, 24, 7, 30)} onCellPress={onCellPress} valueLabel='log' animated={animated} />)
+      expect(screen.getAllByRole('button')).toHaveLength(3)
+      fireEvent.click(screen.getByLabelText('October 24, 2026, 07:00: 4 logs'))
+      expect(onCellPress).toHaveBeenCalledTimes(1)
+      unmount()
+    }
+  })
+
   it("leaves a week of hours' cells after the one under way blank, not buttons", () => {
     render(<Heatmap.Grid data={DATA} rows={7} columns={24} granularity='hour' endTime={END} onCellPress={jest.fn()} />)
     expect(screen.getAllByRole('button')).toHaveLength(6 * 24 + 10)
