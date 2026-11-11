@@ -1,4 +1,5 @@
-import type { TimelineDataPoint, TimelineGranularity } from '../types'
+import type { TimelineDataPoint, TimelineGranularity, TimeZone } from '../types'
+import { clockFor } from './clock'
 import { formatDisplayDate, toDateString } from './dateUtils'
 
 const BUCKET_MS: Record<TimelineGranularity, number> = {
@@ -25,40 +26,48 @@ export function getCellWidth(granularity: TimelineGranularity, zoom: number): nu
   return zoom / 60
 }
 
-/** Where the bucket holding a moment starts, on the device's clock: a day at local midnight, an hour at :00 even in a
- * half-hour time zone. Until 2026-10-24 .Timeline floored epoch milliseconds instead, so its days were UTC days (starting
- * at 07:00 on a UTC+7 device) and its labels read UTC times. */
-export function bucketStart(date: Date, granularity: TimelineGranularity): Date {
+/** Where the bucket holding a moment starts, on the device's clock by default: a day at local midnight, an hour at :00
+ * even in a half-hour time zone. With 'utc', a day at UTC midnight and an hour at UTC :00. Until 2026-10-24 .Timeline
+ * floored epoch milliseconds instead, so its days were UTC days (starting at 07:00 on a UTC+7 device) and its labels read
+ * UTC times. */
+export function bucketStart(date: Date, granularity: TimelineGranularity, timeZone: TimeZone = 'local'): Date {
+  const clock = clockFor(timeZone)
   const start = new Date(date)
-  if (granularity === 'day') start.setHours(0, 0, 0, 0)
-  else if (granularity === 'hour') start.setMinutes(0, 0, 0)
-  else start.setSeconds(0, 0)
+  if (granularity === 'day') clock.setHours(start, 0, 0, 0, 0)
+  else if (granularity === 'hour') clock.setMinutes(start, 0, 0, 0)
+  else clock.setSeconds(start, 0, 0)
   return start
 }
 
 /** A bucket's start moved by some buckets. Days step on the calendar, so a day across a daylight saving change
- * still starts at midnight; hours and minutes step in real time, so a repeated hour is a bucket of its own. */
-export function shiftBucket(start: Date, granularity: TimelineGranularity, by: number): Date {
+ * still starts at midnight; hours and minutes step in real time, so a repeated hour is a bucket of its own. In UTC
+ * every day is 24 hours, so the two agree. */
+export function shiftBucket(start: Date, granularity: TimelineGranularity, by: number, timeZone: TimeZone = 'local'): Date {
   if (granularity !== 'day') return new Date(start.getTime() + by * BUCKET_MS[granularity])
+  const clock = clockFor(timeZone)
   const next = new Date(start)
-  next.setDate(next.getDate() + by)
+  clock.setDate(next, clock.date(next) + by)
   return next
 }
 
-export function buildTimeDataMap(data: TimelineDataPoint[], granularity: TimelineGranularity): Map<number, number> {
+/** Each bucket's total, keyed by its start's time; each point counts toward the bucket its timestamp falls in on the
+ * zone's clock. */
+export function buildTimeDataMap(data: TimelineDataPoint[], granularity: TimelineGranularity, timeZone: TimeZone = 'local'): Map<number, number> {
   const map = new Map<number, number>()
   for (const point of data) {
-    const key = bucketStart(new Date(point.timestamp), granularity).getTime()
+    const key = bucketStart(new Date(point.timestamp), granularity, timeZone).getTime()
     map.set(key, (map.get(key) ?? 0) + point.value)
   }
   return map
 }
 
-/** A bucket for reading aloud: `October 24, 2026`, with `, 09:00` for an hour or `, 09:41` for a minute. */
-export function formatBucketLabel(start: Date, granularity: TimelineGranularity): string {
-  const day = formatDisplayDate(toDateString(start))
+/** A bucket for reading aloud: `October 24, 2026`, with `, 09:00` for an hour or `, 09:41` for a minute, on the zone's
+ * clock. */
+export function formatBucketLabel(start: Date, granularity: TimelineGranularity, timeZone: TimeZone = 'local'): string {
+  const clock = clockFor(timeZone)
+  const day = formatDisplayDate(toDateString(start, timeZone))
   if (granularity === 'day') return day
-  return `${day}, ${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+  return `${day}, ${String(clock.hours(start)).padStart(2, '0')}:${String(clock.minutes(start)).padStart(2, '0')}`
 }
 
 export function formatTimeLabel(date: Date, granularity: TimelineGranularity): string {

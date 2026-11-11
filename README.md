@@ -69,6 +69,7 @@ export default function App() {
 | `tooltipLabel` | `string` | `'event'` | Unit label in the default tooltip. Pluralized automatically (e.g. `'workout'` → `'3 workouts'`). |
 | `tooltipEmptyLabel` | `string` | `'No events'` | Label shown in the tooltip for days with no data. |
 | `pressable` | `PressableComponent` | React Native's `Pressable` | Draws every press (each day, and a tap elsewhere that clears the selection) through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
+| `timeZone` | `'local' \| 'utc'` | `'local'` | The clock that says which day is today and which days `startDate` and `endDate` fall on: the device's, or UTC's. Data dates, `minDate` and `selectedDate` are `YYYY-MM-DD` labels either way, so with `'utc'` give them UTC days. See [Time zones](#time-zones). |
 
 ## Cell modes
 
@@ -275,10 +276,11 @@ The month is controlled: `onMonthChange` gets the month an arrow moves to, and t
 | `valueLabel` | `string` | `'event'` | Unit in each day's accessibility label, pluralized automatically (`'October 12, 2026: 8 logs'`). |
 | `textStyle` | `StyleProp<TextStyle>` | - | Applied to the title, weekdays and dates under the month's own colors, for a font family or size. |
 | `pressable` | `PressableComponent` | React Native's `Pressable` | Draws each day's and arrow's press through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
+| `timeZone` | `'local' \| 'utc'` | `'local'` | The clock that says which day is today, as on `Heatmap.Calendar`. `month`, data dates, `minDate`, `maxDate` and `selectedDate` are labels either way. See [Time zones](#time-zones). |
 
 ## Grid
 
-`Heatmap.Grid` lays out rows and columns of cells, each covering a minute, hour or day of local time up to now, as heat on the same color scale. You pick the shape and the cell's length:
+`Heatmap.Grid` lays out rows and columns of cells, each covering a minute, hour or day of local time (or UTC, with `timeZone='utc'`) up to now, as heat on the same color scale. You pick the shape and the cell's length:
 
 - **A pulse line**: 1 row of 48 hours (or 60 minutes) for a list row or a card.
 - **A week by hour**: 7 rows of 24 hours, each row one day from local midnight.
@@ -308,9 +310,9 @@ const data = [
 <Heatmap.Grid data={data} rows={6} columns={14} granularity='hour' fillDirection='column' theme={{ boundaryGap: 4 }} selected={tappedHour} onCellPress={(bucket) => setTappedHour(bucket.startTime)} animated />
 ```
 
-Cells are on the device's clock: a day starts at local midnight and an hour at :00. Each point counts toward the cell its `timestamp` falls in, so counts already one per cell map 1:1. The last cell in time is the one under way at `endTime` (now by default); the grid doesn't move on its own, so render it again to move it on.
+Cells are on the device's clock: a day starts at local midnight and an hour at :00 (on UTC's with `timeZone='utc'`, see [Time zones](#time-zones)). Each point counts toward the cell its `timestamp` falls in, so counts already one per cell map 1:1. The last cell in time is the one under way at `endTime` (now by default); the grid doesn't move on its own, so render it again to move it on.
 
-When each row (or column, filling down) spans exactly an hour of minutes, a day of hours or a week of days, and there's more than one, they're aligned: each starts at :00, local midnight or `weekStartsOn`, and the cells after the one under way stay blank. So are rows that evenly divide an hour or a day (15, 20 or 30 minutes; 6, 8 or 12 hours): each starts on its share, 06:00 or 12:00, still on the clock across a daylight saving change, and a row that opens a new hour or day stands apart from the one before by `theme.boundaryGap`. A single row is never aligned unless you pass `align`, so a 60-minute strip is the last 60 minutes rather than the clock hour; `align={false}` slides a multi-row grid instead.
+When each row (or column, filling down) spans exactly an hour of minutes, a day of hours or a week of days, and there's more than one, they're aligned: each starts at :00, midnight or `weekStartsOn`, and the cells after the one under way stay blank. So are rows that evenly divide an hour or a day (15, 20 or 30 minutes; 6, 8 or 12 hours): each starts on its share, 06:00 or 12:00, still on the clock across a daylight saving change, and a row that opens a new hour or day stands apart from the one before by `theme.boundaryGap`. A single row is never aligned unless you pass `align`, so a 60-minute strip is the last 60 minutes rather than the clock hour; `align={false}` slides a multi-row grid instead.
 
 A single row draws bars `theme.cellHeight` tall (10 by default); several rows draw square cells sharing the width, as `Heatmap.Calendar` fits its cells. With `autoScale` each cell is scaled against the busiest one in view from zero, as `Heatmap.Timeline` does, so a steady stream reads steady.
 
@@ -345,6 +347,22 @@ With `animated`, a cell whose value or color changes fades its next look in over
 | `accessibilityLabel` | `string` | Counted from the cells | The grid read as one element. With `onCellPress` each cell is labeled instead (`'October 24, 2026, 09:00: 12 logs'`). |
 | `style` | `StyleProp<ViewStyle>` | - | The grid's outer view. |
 | `pressable` | `PressableComponent` | React Native's `Pressable` | Draws each cell's press (with `onCellPress`) through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
+| `timeZone` | `'local' \| 'utc'` | `'local'` | The clock the cells, their alignment and their labels are on: the device's, or UTC's, where a day starts at UTC midnight and every hour is an hour long. See [Time zones](#time-zones). |
+
+## Time zones
+
+Days and hours are on the device's clock by default. Pass `timeZone='utc'` to `Heatmap.Calendar`, `Heatmap.Month` or `Heatmap.Grid` to put them on UTC's instead, for an app that shows its times in UTC (a log viewer, say) and counts its data by UTC days and hours to match:
+
+```tsx
+<Heatmap.Calendar data={countsByUtcDay} timeZone='utc' />
+<Heatmap.Month data={countsByUtcDay} month={month} onMonthChange={setMonth} timeZone='utc' />
+<Heatmap.Grid data={data} rows={6} columns={14} granularity='hour' fillDirection='column' timeZone='utc' />
+```
+
+- **Today** is today's UTC date on `Heatmap.Calendar` and `Heatmap.Month`, so the outlined (and, animated, pulsing) day moves on at UTC midnight. Both read it each time they're drawn: draw them again after midnight to move it on. Without `endDate`, the calendar's year ends on that today too.
+- **Dates are labels:** `Heatmap.Calendar` reads `startDate` and `endDate` as the UTC days they fall on. A point's `date`, `minDate`, `maxDate`, `selectedDate` and `Heatmap.Month`'s `month` are `YYYY-MM-DD` (or `YYYY-MM`) strings either way and are never converted, so give them UTC days.
+- **Moments are moments:** `Heatmap.Grid`'s timestamps, `endTime`, `minTime`, `pendingBefore` and `selected` are instants either way. In UTC each falls in the UTC minute, hour or day holding it, a cell's `TimeBucket` (from `onCellPress`) starts there, and its label reads the UTC time (`'October 24, 2026, 07:00: 4 logs'`).
+- **No daylight saving:** in UTC every hour is 3,600,000 ms and every day 24 hours, so 6-hour columns start at 00:00, 06:00, 12:00 and 18:00 UTC all year and hold each hour once, where on a device's clock the day of a change has 23 or 25 hours.
 
 ## TypeScript
 
@@ -364,6 +382,7 @@ import Heatmap, {
   type TimeBucket,
   type TimelineDataPoint,
   type TimelineGranularity,
+  type TimeZone,
   type TooltipData,
 } from '@rific/heatmap'
 ```

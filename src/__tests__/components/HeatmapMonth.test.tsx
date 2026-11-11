@@ -178,6 +178,33 @@ describe('Heatmap.Month', () => {
     expect(screen.getByLabelText('October 12, 2026: 10 events')).toBeTruthy()
   })
 
+  // Run the suite under TZ= to make these bite: each pair of moments sits half an hour either side of a UTC midnight, so in
+  // any zone off UTC one of them falls on another local day
+  describe('timeZone', () => {
+    const todayLabels = () => screen.getAllByLabelText(/, today$/).map((day) => day.getAttribute('aria-label'))
+
+    it.each([
+      [Date.UTC(2026, 9, 23, 23, 30), 'October 23'],
+      [Date.UTC(2026, 9, 24, 0, 30), 'October 24']
+    ])('marks the UTC date as today with utc, and the local date by default', (now, utcToday) => {
+      jest.setSystemTime(now)
+      const { unmount } = renderMonth({ timeZone: 'utc' })
+      expect(todayLabels()).toEqual([`${utcToday}, 2026: no events, today`])
+      unmount()
+      renderMonth()
+      expect(todayLabels()).toEqual([`October ${new Date(now).getDate()}, 2026: no events, today`])
+    })
+
+    it('moves today on when drawn again after UTC midnight', () => {
+      jest.setSystemTime(Date.UTC(2026, 9, 23, 23, 59, 30))
+      const { rerender } = renderMonth({ timeZone: 'utc' })
+      expect(todayLabels()).toEqual(['October 23, 2026: no events, today'])
+      jest.setSystemTime(Date.UTC(2026, 9, 24, 0, 0, 30))
+      rerender(<Heatmap.Month data={DATA} month='2026-10' timeZone='utc' />)
+      expect(todayLabels()).toEqual(['October 24, 2026: no events, today'])
+    })
+  })
+
   it('keeps its day map for data made afresh with the same points, and rebuilds it when a point changes', () => {
     const build = jest.spyOn(colorUtils, 'buildDataMap')
     const { rerender } = renderMonth({ data: DATA.map((point) => ({ ...point })) })

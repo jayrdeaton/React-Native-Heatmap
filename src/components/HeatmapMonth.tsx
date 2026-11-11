@@ -28,7 +28,7 @@ function Arrow({ direction, disabled, color, onPress, Pressable }: ArrowProps) {
 
 // A month of dates, each on its day's color from the same scale as .Calendar, so a particular date is easy to find
 // and the busy days still show. Only the weeks the month needs (five for most), or six with fixedWeeks.
-export function HeatmapMonth({ data: dataProp, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle, pressable }: MonthProps) {
+export function HeatmapMonth({ data: dataProp, month, onMonthChange, minDate, maxDate, selectedDate, onDayPress, weekStartsOn = 0, fixedWeeks = false, color, colorScale: colorScaleProp, colorScheme, theme: themeProp, autoScale = true, valueLabel = 'event', textStyle, pressable, timeZone = 'local' }: MonthProps) {
   const Pressable = pressable ?? NativePressable
   const data = useStable(dataProp, sameDataPoints)
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
@@ -37,7 +37,8 @@ export function HeatmapMonth({ data: dataProp, month, onMonthChange, minDate, ma
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
   const weeks = useMemo(() => buildMonthGrid(month, weekStartsOn, fixedWeeks), [month, weekStartsOn, fixedWeeks])
   const weekdays = Array.from({ length: 7 }, (_, i) => weekdayInitials[(weekStartsOn + i) % 7])
-  const today = getTodayString()
+  // Read each render, so a month drawn again after midnight moves today on
+  const today = getTodayString(timeZone)
 
   const { backgroundColor, cellRadius, dayLabelColor, gutterSize, monthLabelColor, selectedBorderColor, todayBorderColor } = theme
   const gap = gutterSize / 2

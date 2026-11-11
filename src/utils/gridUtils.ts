@@ -1,4 +1,5 @@
-import type { ColorScale, TimeBucket, TimelineDataPoint, TimelineGranularity } from '../types'
+import type { ColorScale, TimeBucket, TimelineDataPoint, TimelineGranularity, TimeZone } from '../types'
+import { clockFor } from './clock'
 import { getAutoScaleColor, getColorForValue } from './colorUtils'
 import { bucketStart, buildTimeDataMap, formatBucketLabel, shiftBucket } from './timeUtils'
 
@@ -31,6 +32,8 @@ interface GridCellOptions {
   markColor: string
   pendingBefore?: Date
   minTime?: Date
+  /** The clock the cells are on: the device's (the default) or UTC's. */
+  timeZone?: TimeZone
 }
 
 type LineUnit = 'hour' | 'day' | 'week'
@@ -47,65 +50,68 @@ function lineUnit(granularity: TimelineGranularity, length: number): LineUnit | 
 const UNIT_LENGTH: Record<LineUnit, number> = { hour: 60, day: 24, week: 7 }
 
 // Where the aligned line holding a moment starts: its share of the hour or the day (the whole of it for a line of 60
-// minutes or 24 hours: its hour or its local midnight), or its week's first day
-function lineStart(moment: Date, unit: LineUnit, length: number, weekStartsOn: number): Date {
+// minutes or 24 hours: its hour or its midnight), or its week's first day, on the zone's clock
+function lineStart(moment: Date, unit: LineUnit, length: number, weekStartsOn: number, timeZone: TimeZone): Date {
+  const clock = clockFor(timeZone)
   if (unit === 'week') {
-    const day = bucketStart(moment, 'day')
-    return shiftBucket(day, 'day', -((day.getDay() - weekStartsOn + 7) % 7))
+    const day = bucketStart(moment, 'day', timeZone)
+    return shiftBucket(day, 'day', -((clock.day(day) - weekStartsOn + 7) % 7), timeZone)
   }
-  if (unit === 'day' && length === 24) return bucketStart(moment, 'day')
-  const start = bucketStart(moment, unit === 'hour' ? 'minute' : 'hour')
-  if (unit === 'hour') start.setMinutes(start.getMinutes() - (start.getMinutes() % length))
-  else start.setHours(start.getHours() - (start.getHours() % length))
+  if (unit === 'day' && length === 24) return bucketStart(moment, 'day', timeZone)
+  const start = bucketStart(moment, unit === 'hour' ? 'minute' : 'hour', timeZone)
+  if (unit === 'hour') clock.setMinutes(start, clock.minutes(start) - (clock.minutes(start) % length))
+  else clock.setHours(start, clock.hours(start) - (clock.hours(start) % length))
   return start
 }
 
 // Whole units step as their buckets do (days on the calendar). A share of a day steps on the clock, so a line of 6 hours
-// still starts at 06:00 across a daylight saving change
-function shiftLine(start: Date, unit: LineUnit, length: number, by: number): Date {
-  if (unit === 'week') return shiftBucket(start, 'day', 7 * by)
-  if (length === UNIT_LENGTH[unit]) return shiftBucket(start, unit, by)
+// still starts at 06:00 across a daylight saving change (in UTC, which has none, the clock and real time agree)
+function shiftLine(start: Date, unit: LineUnit, length: number, by: number, timeZone: TimeZone): Date {
+  if (unit === 'week') return shiftBucket(start, 'day', 7 * by, timeZone)
+  if (length === UNIT_LENGTH[unit]) return shiftBucket(start, unit, by, timeZone)
+  const clock = clockFor(timeZone)
   const next = new Date(start)
-  if (unit === 'day') next.setHours(next.getHours() + length * by)
-  else next.setMinutes(next.getMinutes() + length * by)
+  if (unit === 'day') clock.setHours(next, clock.hours(next) + length * by)
+  else clock.setMinutes(next, clock.minutes(next) + length * by)
   return next
 }
 
-// Whether an aligned line starting here opens a new unit: :00, local midnight, or the week's first day
-function opensUnit(start: Date, unit: LineUnit, weekStartsOn: number): boolean {
-  if (unit === 'hour') return start.getMinutes() === 0
-  if (unit === 'day') return start.getHours() === 0
-  return start.getDay() === weekStartsOn
+// Whether an aligned line starting here opens a new unit: :00, midnight, or the week's first day, on the zone's clock
+function opensUnit(start: Date, unit: LineUnit, weekStartsOn: number, timeZone: TimeZone): boolean {
+  const clock = clockFor(timeZone)
+  if (unit === 'hour') return clock.minutes(start) === 0
+  if (unit === 'day') return clock.hours(start) === 0
+  return clock.day(start) === weekStartsOn
 }
 
 /**
- * .Grid's cells as rows of columns, each a local bucket with its value and color, or null for a blank: a cell after the
- * one under way at `end`, which only an aligned grid has (the rest of today's row in a week of hours). Unaligned, the
- * cells are the `rows * columns` buckets ending with the one under way. Time runs across rows or down columns by
- * fillDirection. With autoScale a cell is scaled against the busiest in view from zero, as .Timeline does, rather than
+ * .Grid's cells as rows of columns, each a bucket on the zone's clock (local by default) with its value and color, or null
+ * for a blank: a cell after the one under way at `end`, which only an aligned grid has (the rest of today's row in a week
+ * of hours). Unaligned, the cells are the `rows * columns` buckets ending with the one under way. Time runs across rows or
+ * down columns by fillDirection. With autoScale a cell is scaled against the busiest in view from zero, as .Timeline does, rather than
  * across the data's min to max as .Calendar does: a steady stream then reads steady, where min to max would spread
  * small differences over the whole scale.
  */
-export function buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end, colorScale, autoScale, marks, markColor, pendingBefore, minTime }: GridCellOptions): (GridCell | null)[][] {
+export function buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end, colorScale, autoScale, marks, markColor, pendingBefore, minTime, timeZone = 'local' }: GridCellOptions): (GridCell | null)[][] {
   const total = rows * columns
   const lineLength = fillDirection === 'row' ? columns : rows
   const lines = fillDirection === 'row' ? rows : columns
-  const last = bucketStart(end, granularity)
+  const last = bucketStart(end, granularity, timeZone)
   const unit = lineUnit(granularity, lineLength)
   const aligned = unit !== null && (align ?? lines > 1)
-  const firstLine = unit && aligned ? shiftLine(lineStart(last, unit, lineLength, weekStartsOn), unit, lineLength, 1 - lines) : null
+  const firstLine = unit && aligned ? shiftLine(lineStart(last, unit, lineLength, weekStartsOn, timeZone), unit, lineLength, 1 - lines, timeZone) : null
 
   // Each cell's start, in time order
-  const starts = Array.from({ length: total }, (_, k) => (unit && firstLine ? shiftBucket(shiftLine(firstLine, unit, lineLength, Math.floor(k / lineLength)), granularity, k % lineLength) : shiftBucket(last, granularity, k - total + 1)))
+  const starts = Array.from({ length: total }, (_, k) => (unit && firstLine ? shiftBucket(shiftLine(firstLine, unit, lineLength, Math.floor(k / lineLength), timeZone), granularity, k % lineLength, timeZone) : shiftBucket(last, granularity, k - total + 1, timeZone)))
 
-  const values = buildTimeDataMap(data, granularity)
+  const values = buildTimeDataMap(data, granularity, timeZone)
   const markColors = new Map<number, string>()
   for (const mark of marks ?? []) {
-    if (mark.value > 0) markColors.set(bucketStart(new Date(mark.timestamp), granularity).getTime(), mark.color ?? markColor)
+    if (mark.value > 0) markColors.set(bucketStart(new Date(mark.timestamp), granularity, timeZone).getTime(), mark.color ?? markColor)
   }
-  const pendingStart = pendingBefore ? bucketStart(pendingBefore, granularity).getTime() : -Infinity
-  const minStart = minTime ? bucketStart(minTime, granularity).getTime() : -Infinity
-  const buckets: (TimeBucket | null)[] = starts.map((startTime) => (startTime.getTime() > last.getTime() ? null : { startTime, endTime: shiftBucket(startTime, granularity, 1), granularity, value: values.get(startTime.getTime()) ?? 0 }))
+  const pendingStart = pendingBefore ? bucketStart(pendingBefore, granularity, timeZone).getTime() : -Infinity
+  const minStart = minTime ? bucketStart(minTime, granularity, timeZone).getTime() : -Infinity
+  const buckets: (TimeBucket | null)[] = starts.map((startTime) => (startTime.getTime() > last.getTime() ? null : { startTime, endTime: shiftBucket(startTime, granularity, 1, timeZone), granularity, value: values.get(startTime.getTime()) ?? 0 }))
   const busiest = Math.max(0, ...buckets.map((bucket) => (bucket && bucket.startTime.getTime() >= Math.max(pendingStart, minStart) ? bucket.value : 0)))
 
   const grid: (GridCell | null)[][] = Array.from({ length: rows }, () => [])
@@ -118,7 +124,7 @@ export function buildGridCells({ data, rows, columns, granularity, fillDirection
     const unavailable = bucket.startTime.getTime() < minStart
     const pending = !unavailable && bucket.startTime.getTime() < pendingStart
     const fill = pending ? null : autoScale ? getAutoScaleColor(bucket.value, 0, busiest, colorScale) : getColorForValue(bucket.value, colorScale)
-    const boundary = unit !== null && firstLine !== null && k % lineLength === 0 && opensUnit(bucket.startTime, unit, weekStartsOn)
+    const boundary = unit !== null && firstLine !== null && k % lineLength === 0 && opensUnit(bucket.startTime, unit, weekStartsOn, timeZone)
     grid[row].push({ bucket, fill, pending, unavailable, mark: markColors.get(bucket.startTime.getTime()) ?? null, boundary })
   })
   return grid
@@ -135,9 +141,9 @@ export function getGridLabel(grid: (GridCell | null)[][], granularity: TimelineG
   return `${unit} in ${active} of the last ${cells.length} ${plural(cells.length, granularity)}${marked ? `, ${marked} marked` : ''}`
 }
 
-/** One cell read as a button: `October 24, 2026, 09:00: 12 events, marked`. */
-export function getCellLabel(cell: GridCell, valueLabel: string): string {
+/** One cell read as a button: `October 24, 2026, 09:00: 12 events, marked`, its time on the zone's clock. */
+export function getCellLabel(cell: GridCell, valueLabel: string, timeZone: TimeZone = 'local'): string {
   const { startTime, granularity, value } = cell.bucket
   const count = cell.unavailable ? 'unavailable' : cell.pending ? 'not loaded yet' : value === 0 ? `no ${valueLabel}s` : `${value} ${plural(value, valueLabel)}`
-  return `${formatBucketLabel(startTime, granularity)}: ${count}${cell.mark ? ', marked' : ''}`
+  return `${formatBucketLabel(startTime, granularity, timeZone)}: ${count}${cell.mark ? ', marked' : ''}`
 }

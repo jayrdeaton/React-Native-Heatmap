@@ -1,15 +1,20 @@
 import { fullMonthNames, monthNames } from '../constants'
+import type { TimeZone } from '../types'
+import { clockFor } from './clock'
 
-export function toDateString(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
+/** The day a moment falls on, YYYY-MM-DD, on the device's clock or UTC's. */
+export function toDateString(date: Date, timeZone: TimeZone = 'local'): string {
+  const clock = clockFor(timeZone)
+  const y = clock.year(date)
+  const m = String(clock.month(date) + 1).padStart(2, '0')
+  const d = String(clock.date(date)).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
 
-export function parseDate(dateStr: string): Date {
+/** The midnight starting a YYYY-MM-DD day, on the device's clock or UTC's. */
+export function parseDate(dateStr: string, timeZone: TimeZone = 'local'): Date {
   const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d)
+  return clockFor(timeZone).midnight(y, m - 1, d)
 }
 
 export function formatDisplayDate(dateStr: string): string {
@@ -21,27 +26,29 @@ export function formatDisplayDate(dateStr: string): string {
  * Builds a week grid from startDate to endDate (inclusive).
  * Each week is an array of 7 day strings (YYYY-MM-DD) starting on Sunday.
  * Days outside the range are represented as empty strings.
- * Only the days count, not the times: the grid is the same for any two Dates on the same days.
+ * Only the days count, not the times: the grid is the same for any two Dates on the same days. Which days those are
+ * is read on timeZone's clock: the device's by default, or UTC's.
  */
-export function buildWeekGrid(startDate: Date, endDate: Date): string[][] {
+export function buildWeekGrid(startDate: Date, endDate: Date, timeZone: TimeZone = 'local'): string[][] {
+  const clock = clockFor(timeZone)
   const weeks: string[][] = []
-  const startDay = toDateString(startDate)
-  const endDay = toDateString(endDate)
+  const startDay = toDateString(startDate, timeZone)
+  const endDay = toDateString(endDate, timeZone)
 
   // Rewind to the Sunday on or before startDate. The cursor walks at noon, which no daylight saving change reaches,
   // and days compare as YYYY-MM-DD strings, so the end day is in whatever time either Date carries (a start later
   // in its day than the end used to drop the end day)
-  const cursor = parseDate(startDay)
-  cursor.setHours(12)
-  cursor.setDate(cursor.getDate() - cursor.getDay())
+  const cursor = parseDate(startDay, timeZone)
+  clock.setHours(cursor, 12)
+  clock.setDate(cursor, clock.date(cursor) - clock.day(cursor))
 
-  while (toDateString(cursor) <= endDay) {
+  while (toDateString(cursor, timeZone) <= endDay) {
     const week: string[] = []
     for (let i = 0; i < 7; i++) {
-      const dayStr = toDateString(cursor)
+      const dayStr = toDateString(cursor, timeZone)
       const isInRange = dayStr >= startDay && dayStr <= endDay
       week.push(isInRange ? dayStr : '')
-      cursor.setDate(cursor.getDate() + 1)
+      clock.setDate(cursor, clock.date(cursor) + 1)
     }
     weeks.push(week)
   }
@@ -111,14 +118,18 @@ export function getMonthLabels(weeks: string[][]): MonthLabel[] {
   return labels
 }
 
-export function getTodayString(): string {
-  return toDateString(new Date())
+/** Today, YYYY-MM-DD, on the device's clock or UTC's. Read it when it's needed (each render), not once: a value kept
+ * from launch stays yesterday after midnight. */
+export function getTodayString(timeZone: TimeZone = 'local'): string {
+  return toDateString(new Date(), timeZone)
 }
 
-export function getDefaultDateRange(): { startDate: Date; endDate: Date } {
+/** A year of days ending today, the day after this date a year ago first, on the device's clock or UTC's. */
+export function getDefaultDateRange(timeZone: TimeZone = 'local'): { startDate: Date; endDate: Date } {
+  const clock = clockFor(timeZone)
   const endDate = new Date()
   const startDate = new Date()
-  startDate.setFullYear(startDate.getFullYear() - 1)
-  startDate.setDate(startDate.getDate() + 1)
+  clock.setFullYear(startDate, clock.year(startDate) - 1)
+  clock.setDate(startDate, clock.date(startDate) + 1)
   return { startDate, endDate }
 }

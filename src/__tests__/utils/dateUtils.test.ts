@@ -1,4 +1,4 @@
-import { buildMonthGrid, buildWeekGrid, formatDisplayDate, formatMonthTitle, getDefaultDateRange, getMonthLabels, getTodayString, shiftMonth, toDateString } from '../../utils/dateUtils'
+import { buildMonthGrid, buildWeekGrid, formatDisplayDate, formatMonthTitle, getDefaultDateRange, getMonthLabels, getTodayString, parseDate, shiftMonth, toDateString } from '../../utils/dateUtils'
 
 describe('toDateString', () => {
   it('formats a date to YYYY-MM-DD', () => {
@@ -243,5 +243,63 @@ describe('formatMonthTitle', () => {
   it('names the month and year', () => {
     expect(formatMonthTitle('2026-10')).toBe('October 2026')
     expect(formatMonthTitle('2027-01')).toBe('January 2027')
+  })
+})
+
+// UTC days on a device anywhere: run the suite under TZ= (America/New_York, Asia/Bangkok) to make these bite. Each pair of
+// moments sits half an hour either side of a UTC midnight, so in any zone off UTC one of them falls on another local day
+describe('in UTC', () => {
+  const lateNov11 = new Date(Date.UTC(2026, 10, 11, 23, 30))
+  const earlyNov12 = new Date(Date.UTC(2026, 10, 12, 0, 30))
+
+  afterEach(() => jest.useRealTimers())
+
+  it('reads the day a moment falls on in UTC, whatever the zone', () => {
+    expect(toDateString(lateNov11, 'utc')).toBe('2026-11-11')
+    expect(toDateString(earlyNov12, 'utc')).toBe('2026-11-12')
+    // And the local day by default, as the device's clock reads it
+    expect(toDateString(lateNov11)).toBe(`${lateNov11.getFullYear()}-${String(lateNov11.getMonth() + 1).padStart(2, '0')}-${String(lateNov11.getDate()).padStart(2, '0')}`)
+  })
+
+  it('parses a day as its UTC midnight', () => {
+    expect(parseDate('2026-11-12', 'utc').getTime()).toBe(Date.UTC(2026, 10, 12))
+    expect(parseDate('2026-11-12').getTime()).toBe(new Date(2026, 10, 12).getTime())
+  })
+
+  it('takes today from the UTC date either side of UTC midnight', () => {
+    jest.useFakeTimers({ now: lateNov11 })
+    expect(getTodayString('utc')).toBe('2026-11-11')
+    expect(getTodayString()).toBe(toDateString(lateNov11))
+    jest.setSystemTime(earlyNov12)
+    expect(getTodayString('utc')).toBe('2026-11-12')
+    expect(getTodayString()).toBe(toDateString(earlyNov12))
+  })
+
+  it('ends the default range on the UTC today and starts it the day after that date a year before', () => {
+    jest.useFakeTimers({ now: lateNov11 })
+    const late = getDefaultDateRange('utc')
+    expect([toDateString(late.startDate, 'utc'), toDateString(late.endDate, 'utc')]).toEqual(['2025-11-12', '2026-11-11'])
+    jest.setSystemTime(earlyNov12)
+    const early = getDefaultDateRange('utc')
+    expect([toDateString(early.startDate, 'utc'), toDateString(early.endDate, 'utc')]).toEqual(['2025-11-13', '2026-11-12'])
+  })
+
+  it('builds the week grid from the UTC days of startDate and endDate', () => {
+    // 00:30 UTC on Sunday, November 1 is still October 31 west of Greenwich; 23:30 UTC on the 11th is the 12th east of it
+    const days = buildWeekGrid(new Date(Date.UTC(2026, 10, 1, 0, 30)), lateNov11, 'utc')
+    expect(days[0]).toEqual(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'])
+    expect(days.flat().filter(Boolean)).toHaveLength(11)
+    expect(days.at(-1)).toEqual(['2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '', '', ''])
+  })
+
+  it.each([
+    ['March', Date.UTC(2026, 2, 1), Date.UTC(2026, 2, 31)],
+    ['October to November', Date.UTC(2026, 9, 1), Date.UTC(2026, 10, 30)]
+  ])("has every UTC day once across the device's daylight saving changes in %s", (_, start, end) => {
+    const days = buildWeekGrid(new Date(start), new Date(end), 'utc')
+      .flat()
+      .filter((d: string) => d !== '')
+    const expected = Array.from({ length: (end - start) / 86400000 + 1 }, (__, i) => new Date(start + i * 86400000).toISOString().slice(0, 10))
+    expect(days).toEqual(expected)
   })
 })

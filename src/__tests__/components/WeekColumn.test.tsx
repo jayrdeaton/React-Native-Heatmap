@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import type React from 'react'
 import { Animated } from 'react-native'
+import * as svg from 'react-native-svg'
 
 import { WeekColumn } from '../../components/WeekColumn'
 import type { DataPoint } from '../../types'
@@ -23,7 +24,9 @@ function renderWeekColumn(overrides: Partial<WeekColumnProps> = {}) {
     columnIndex: 0,
     totalColumns: 1,
     animationDirection: 'ltr',
-    animationDuration: 350
+    animationDuration: 350,
+    // A day outside the week, so none is today unless a test says
+    today: '2099-01-01'
   }
   return render(<WeekColumn {...defaultProps} {...overrides} />)
 }
@@ -136,6 +139,26 @@ describe('WeekColumn', () => {
     ).not.toThrow()
   })
 
+  // .Calendar reads today each render and hands it down. It used to be read once, when this module loaded, so a calendar
+  // left open past midnight kept outlining the day the app started on
+  describe('today', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    const TODAY_COLOR = '#ff00aa'
+    // Each Rect as an element carrying its stroke, so the day holding today's outline can be read from its cell's label
+    const outlinedDays = (container: HTMLElement) => Array.from(container.querySelectorAll(`[data-stroke="${TODAY_COLOR}"]`)).map((element) => element.closest('[aria-label]')?.getAttribute('aria-label'))
+
+    it('outlines the day it is given as today, and moves the outline when today moves on', () => {
+      jest.spyOn(svg, 'Rect').mockImplementation(((props: { stroke?: string }) => <i data-stroke={props.stroke} />) as never)
+      const todayTheme = { ...theme, todayBorderColor: TODAY_COLOR }
+      const { container, rerender } = renderWeekColumn({ theme: todayTheme, today: '2026-01-07' })
+      expect(outlinedDays(container)).toEqual(['2026-01-07: 0 events'])
+
+      rerender(<WeekColumn week={WEEK} dataMap={new Map()} colorScale={colorScale} theme={todayTheme} cellMode='solid' columnIndex={0} totalColumns={1} animationDirection='ltr' animationDuration={350} today='2026-01-08' />)
+      expect(outlinedDays(container)).toEqual(['2026-01-08: 0 events'])
+    })
+  })
+
   describe('the fade wave', () => {
     afterEach(() => jest.restoreAllMocks())
 
@@ -144,7 +167,7 @@ describe('WeekColumn', () => {
       timing.mockClear()
       const { rerender } = renderWeekColumn({ animated: true, ...props })
       const dataMap = new Map<string, DataPoint>([['2026-01-07', { date: '2026-01-07', value: 5 }]])
-      rerender(<WeekColumn week={WEEK} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode='solid' columnIndex={0} totalColumns={1} animationDirection='ltr' animationDuration={350} animated {...props} />)
+      rerender(<WeekColumn week={WEEK} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode='solid' columnIndex={0} totalColumns={1} animationDirection='ltr' animationDuration={350} today='2099-01-01' animated {...props} />)
       return timing.mock.calls.map(([, config]) => config.delay)
     }
 

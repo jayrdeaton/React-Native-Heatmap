@@ -4,7 +4,7 @@ import { type LayoutChangeEvent, Pressable as NativePressable, ScrollView, Style
 import { useStable } from '../hooks/useStable'
 import type { HeatmapProps, TooltipData } from '../types'
 import { buildDataMap, computeDataRange, mergeColorScale, mergeTheme } from '../utils/colorUtils'
-import { buildWeekGrid, getDefaultDateRange, getMonthLabels, parseDate, toDateString } from '../utils/dateUtils'
+import { buildWeekGrid, getDefaultDateRange, getMonthLabels, getTodayString, parseDate, toDateString } from '../utils/dateUtils'
 import { sameDataPoints } from '../utils/equalityUtils'
 import { cellPitch, waveStep } from '../utils/layoutUtils'
 import { DayLabels } from './DayLabels'
@@ -12,7 +12,7 @@ import { MonthLabels } from './MonthLabels'
 import { Tooltip } from './Tooltip'
 import { WeekColumn } from './WeekColumn'
 
-export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, minDate, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel, pressable }: HeatmapProps) {
+export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endDate: endDateProp, color, colorScale: colorScaleProp, theme: themeProp, cellMode = 'solid', colorScheme, autoScale = true, showMonthLabels = true, showDayLabels = true, onDayPress, onSelectionChange, selectedDate: selectedDateProp, minDate, renderTooltip, renderCell, animated = false, animationDirection = 'rtl', animationDuration = 350, scrollEnabled = true, onEndReached, onEndReachedThreshold = 0.1, tooltipLabel, tooltipEmptyLabel, pressable, timeZone = 'local' }: HeatmapProps) {
   const Pressable = pressable ?? NativePressable
   const [ready, setReady] = useState(false)
   const [ownSelectedDate, setOwnSelectedDate] = useState<string | null>(null)
@@ -33,19 +33,24 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
   }, [])
 
   // The grid is built from days, so it's keyed on them rather than on the Dates: a host passing a new Date for the same
-  // day each render (endDate={new Date()} reads naturally) would otherwise rebuild it, and every column, on every render
-  const startDay = startDateProp && toDateString(startDateProp)
-  const endDay = endDateProp && toDateString(endDateProp)
+  // day each render (endDate={new Date()} reads naturally) would otherwise rebuild it, and every column, on every render.
+  // Which days they are is read on timeZone's clock
+  const startDay = startDateProp && toDateString(startDateProp, timeZone)
+  const endDay = endDateProp && toDateString(endDateProp, timeZone)
+  // Read each render, not once: a calendar drawn again after midnight moves today on (a string, so the week columns'
+  // memo holds until it does)
+  const today = getTodayString(timeZone)
   const data = useStable(dataProp, sameDataPoints)
 
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeTheme(themeProp, colorScheme), [themeProp, colorScheme])
   const dataMap = useMemo(() => buildDataMap(data), [data])
   const dataRange = useMemo(() => (autoScale ? computeDataRange(data) : undefined), [autoScale, data])
+  // Without endDate the grid is the year ending today, so it moves on with today rather than leaving it past the end
   const weeks = useMemo(() => {
-    const defaults = getDefaultDateRange()
-    return buildWeekGrid(startDay ? parseDate(startDay) : defaults.startDate, endDay ? parseDate(endDay) : defaults.endDate)
-  }, [startDay, endDay])
+    const defaults = getDefaultDateRange(timeZone)
+    return buildWeekGrid(startDay ? parseDate(startDay, timeZone) : defaults.startDate, parseDate(endDay ?? today, timeZone), timeZone)
+  }, [startDay, endDay, today, timeZone])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
 
   const handleScroll = useCallback(
@@ -118,7 +123,7 @@ export function HeatmapCalendar({ data: dataProp, startDate: startDateProp, endD
         <ScrollView horizontal scrollEnabled={scrollEnabled} showsHorizontalScrollIndicator={false} scrollEventThrottle={16} onScroll={handleScroll} style={styles.scrollView}>
           <View style={{ height: gridHeight, transform: [{ scaleX: -1 }] }}>
             {showMonthLabels && <MonthLabels monthLabels={monthLabels} theme={theme} />}
-            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} waveStep={step} selectedDate={selectedDate} minDate={minDate} pressable={pressable} />)}</View>
+            <View style={styles.row}>{ready && weeks.map((week, i) => <WeekColumn key={i} week={week} dataMap={dataMap} colorScale={colorScale} theme={theme} cellMode={cellMode} autoScale={autoScale} dataRange={dataRange} onCellPress={handleCellPress} animated={animated} renderCell={renderCell} columnIndex={i} totalColumns={weeks.length} animationDirection={animationDirection} animationDuration={animationDuration} waveStep={step} selectedDate={selectedDate} today={today} minDate={minDate} pressable={pressable} />)}</View>
           </View>
         </ScrollView>
 

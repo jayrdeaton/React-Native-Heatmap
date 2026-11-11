@@ -1,5 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import type React from 'react'
 import { Animated } from 'react-native'
+import * as svg from 'react-native-svg'
 
 import Heatmap from '../../index'
 import type { DataPoint } from '../../types'
@@ -535,6 +537,85 @@ describe('Heatmap.Calendar', () => {
         fireEvent.click(outside(container))
       }).not.toThrow()
       expect(container.textContent).not.toContain('3 events')
+    })
+  })
+
+  // Today, and the days startDate and endDate fall on, read on the device's clock or UTC's. Run the suite under TZ= to make
+  // the UTC cases bite: each pair of moments sits half an hour either side of a UTC midnight, so in any zone off UTC one
+  // of them falls on another local day
+  describe('timeZone', () => {
+    const TODAY_COLOR = '#ff00aa'
+    const theme = { todayBorderColor: TODAY_COLOR, selectedBorderColor: '#00aaff' }
+    const MAY_1 = new Date(Date.UTC(2026, 4, 1, 12))
+    const MAY_20 = new Date(Date.UTC(2026, 4, 20, 12))
+    // Each Rect as an element carrying its stroke, so the day holding today's outline can be read from its cell's label
+    const outlinedDays = (container: HTMLElement) => Array.from(container.querySelectorAll(`[data-stroke="${TODAY_COLOR}"]`)).map((element) => element.closest('[aria-label]')?.getAttribute('aria-label'))
+    // Draws the calendar on fake timers, letting in its cells (deferred to a zero-delay timeout where jsdom has no idle callback)
+    const draw = (ui: React.ReactElement) => {
+      const utils = render(ui)
+      act(() => jest.advanceTimersByTime(0))
+      return utils
+    }
+
+    beforeEach(() => {
+      jest.spyOn(svg, 'Rect').mockImplementation(((props: { stroke?: string }) => <i data-stroke={props.stroke} />) as never)
+    })
+
+    afterEach(() => {
+      cleanup()
+      jest.restoreAllMocks()
+      jest.useRealTimers()
+    })
+
+    it.each([
+      ['late on May 17', Date.UTC(2026, 4, 17, 23, 30), '2026-05-17'],
+      ['early on May 18', Date.UTC(2026, 4, 18, 0, 30), '2026-05-18']
+    ])('outlines the UTC date as today %s UTC with utc, and the local date by default', (_, now, utcToday) => {
+      jest.useFakeTimers({ now })
+      const { container, unmount } = draw(<Heatmap.Calendar data={[]} startDate={MAY_1} endDate={MAY_20} theme={theme} timeZone='utc' />)
+      expect(outlinedDays(container)).toEqual([`${utcToday}: 0 events`])
+      unmount()
+
+      const local = draw(<Heatmap.Calendar data={[]} startDate={MAY_1} endDate={MAY_20} theme={theme} />)
+      expect(outlinedDays(local.container)).toEqual([`${dateUtils.toDateString(new Date(now))}: 0 events`])
+    })
+
+    it('reads startDate and endDate as UTC days', async () => {
+      // 00:30 UTC on May 3 is still May 2 west of Greenwich; 23:30 UTC on May 17 is already May 18 east of it
+      render(<Heatmap.Calendar data={[]} startDate={new Date(Date.UTC(2026, 4, 3, 0, 30))} endDate={new Date(Date.UTC(2026, 4, 17, 23, 30))} timeZone='utc' />)
+      expect(await screen.findByLabelText('2026-05-03: 0 events')).toBeTruthy()
+      expect(screen.getByLabelText('2026-05-17: 0 events')).toBeTruthy()
+      expect(screen.queryByLabelText('2026-05-02: 0 events')).toBeNull()
+      expect(screen.queryByLabelText('2026-05-18: 0 events')).toBeNull()
+    })
+
+    // Today used to be read once, when WeekColumn's module loaded, so a calendar left open overnight kept the day the app
+    // started on
+    it.each([
+      ['local', new Date(2026, 4, 17, 23, 59, 30).getTime()],
+      ['utc', Date.UTC(2026, 4, 17, 23, 59, 30)]
+    ] as const)('moves today on when drawn again after midnight on the %s clock', (timeZone, beforeMidnight) => {
+      jest.useFakeTimers({ now: beforeMidnight })
+      const { container, rerender } = draw(<Heatmap.Calendar data={[]} startDate={MAY_1} endDate={MAY_20} theme={theme} timeZone={timeZone} />)
+      expect(outlinedDays(container)).toEqual(['2026-05-17: 0 events'])
+
+      jest.setSystemTime(beforeMidnight + 60000)
+      rerender(<Heatmap.Calendar data={[]} startDate={MAY_1} endDate={MAY_20} theme={theme} timeZone={timeZone} />)
+      expect(outlinedDays(container)).toEqual(['2026-05-18: 0 events'])
+    })
+
+    it('ends the default range on the UTC today, and moves it on with today', () => {
+      jest.useFakeTimers({ now: Date.UTC(2026, 10, 11, 23, 30) })
+      const { container, rerender } = draw(<Heatmap.Calendar data={[]} theme={theme} timeZone='utc' />)
+      expect(outlinedDays(container)).toEqual(['2026-11-11: 0 events'])
+      expect(screen.queryByLabelText('2026-11-12: 0 events')).toBeNull()
+      expect(screen.getByLabelText('2025-11-12: 0 events')).toBeTruthy()
+      expect(screen.queryByLabelText('2025-11-11: 0 events')).toBeNull()
+
+      jest.setSystemTime(Date.UTC(2026, 10, 12, 0, 30))
+      rerender(<Heatmap.Calendar data={[]} theme={theme} timeZone='utc' />)
+      expect(outlinedDays(container)).toEqual(['2026-11-12: 0 events'])
+      expect(screen.queryByLabelText('2025-11-12: 0 events')).toBeNull()
     })
   })
 

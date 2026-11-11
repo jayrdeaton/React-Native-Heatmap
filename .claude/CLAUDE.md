@@ -42,7 +42,7 @@ src/
   index.ts                        - public exports: default `Heatmap` object (.Calendar/.Grid/.Month/.Scatter/.Timeline) + type-only exports
   types.ts                        - every prop/data type: DataPoint, Segment, ColorScale, HeatmapTheme, HeatmapProps, MonthProps, GridProps, GridTheme, ScatterProps,
                                      TimelineDataPoint, TimeBucket, TimelineTheme, TimelineProps, TooltipData, CellMode, TimelineGranularity,
-                                     PressableComponent (the injected pressable's type)
+                                     PressableComponent (the injected pressable's type), TimeZone ('local' | 'utc')
   constants/
     index.ts                      - month/day label arrays, weekday initials, default light/dark accent colors, default light/dark HeatmapTheme
                                      and GridTheme objects
@@ -59,7 +59,7 @@ src/
     FadeLayerView.tsx              - one layer of a fade: Animated.View on the native driver, or on web a CSS keyframe fade, paused
                                      once a newer layer is on top
     WeekColumn.tsx                 - one 7-day week of cells; resolves each day's color/segments/today/selected state and its fade's
-                                     delay (the wave step times its distance from where the wave starts)
+                                     delay (the wave step times its distance from where the wave starts); today comes from .Calendar
     DayLabels.tsx                  - Mon/Wed/Fri row labels
     MonthLabels.tsx                - month-name labels positioned by week index
     Tooltip.tsx                    - floating tooltip above a pressed cell, or the caller's renderTooltip
@@ -80,6 +80,8 @@ src/
     useStable.ts                   - the last value handed in while each new one is equal to it (kept in state), so data a host
                                      makes afresh each render keeps what's memoized on it
   utils/
+    clock.ts                       - clockFor(timeZone): Date's getters and setters on the device's clock or UTC's (getUTC*/setUTC*),
+                                     which every helper reading days or hours goes through
     colorUtils.ts                  - color scale generation/merging, threshold + auto-scale (interpolated) color lookup, theme merging,
                                      near-black/near-white text by WCAG contrast (getContrastTextColor), GridTheme merging
     dateUtils.ts                   - date string parse/format, week-grid building, month-label placement, default 1-year date range,
@@ -127,6 +129,7 @@ import Heatmap, {
   type TimelineGranularity,
   type TimelineProps,
   type TimelineTheme,
+  type TimeZone,
   type TooltipData
 } from '@rific/heatmap'
 ```
@@ -187,14 +190,24 @@ For Lumber's hourly heatmap (6 rows of hours in columns, a day to every 4, for a
 - **Checked** in Lumber's hourly heatmap, in the iOS simulator (switching to hours rippling in from today, ERROR rippling across 14 columns with a tapped hour's outline holding still) and in Lumber Dev at 1200pt (45 columns, ERROR's delays 0 to 420ms, every fade settled by 0.8s, the outline on one cell). Not checked: Android.
 - **Tests:** `gridUtils.test.ts` covers 6-hour columns, 12-hour rows (and sliding with `align={false}`), 15-minute columns and `boundary`; `HeatmapGrid.test.tsx` the gap (by the mocked View's styles), the outline, the ripple's delay, no fade for equal data or a window moving on, pending cells snapping, and a press reaching the newest handler.
 
+## UTC days and hours (2026-11-11)
+
+For Lumber's setting to show times in UTC: `timeZone` on `.Calendar`, `.Month` and `.Grid`, `'local'` (the default, unchanged) or `'utc'`. `.Timeline` and `.Scatter` stay on the device's clock.
+
+- **One clock, passed down:** `clockFor(timeZone)` (utils/clock.ts) is Date's own getters and setters for `'local'` and their `getUTC`/`setUTC` twins for `'utc'`, so the local path makes exactly the calls it made before and there's no second copy of the date math. `toDateString`, `parseDate`, `buildWeekGrid`, `getTodayString`, `getDefaultDateRange`, `bucketStart`, `shiftBucket`, `buildTimeDataMap`, `formatBucketLabel`, `buildGridCells` (and its `lineStart`, `shiftLine`, `opensUnit`) and `getCellLabel` take a `timeZone` defaulting to `'local'`; no module keeps one. The clock's setters pass on only the arguments given, since Date's setters read an explicit `undefined` as NaN.
+- **What the zone changes:** `.Calendar` and `.Month`'s today, and the days `.Calendar`'s `startDate` and `endDate` fall on. Day strings (`date`, `minDate`, `maxDate`, `selectedDate`, `month`) are labels and never converted. `.Grid` buckets, aligns, steps and labels on the zone's clock; `endTime`, `minTime`, `pendingBefore`, `selected` and timestamps stay moments. In UTC an hour is 3,600,000 ms and a 6-hour line starts at 00:00, 06:00, 12:00 or 18:00.
+- **Today moves on:** `WeekColumn` read today once, at module load (TODO.md had it), so a calendar left open overnight kept the launch day. `.Calendar` now reads `getTodayString(timeZone)` each render and passes it down as `today`, a string, so the columns' memo holds until midnight. Without `endDate` the default year ends on that today, so its grid memo is keyed on it too and moves on with it rather than leaving today past the end.
+- **Local 6-hour lines across daylight saving (not changed):** on the device's clock a 6-hour line steps on the clock but its cells step in real time, so in New York the line holding the November change shows 01:00 twice and never reaches 05:00, and in March 06:00 is drawn at the end of one line and the start of the next. UTC has neither.
+- **Tests** (each `timeZone` or `in UTC` block) pick moments half an hour either side of a UTC midnight, so in any zone off UTC one of them falls on another local day, and the DST cases sit on the US changes of November 1 and March 8, 2026. Run them under `TZ=`: with `clockFor` forced to the local clock, 25 fail under America/New_York and 23 under Asia/Bangkok and Asia/Kolkata, and none under UTC, where the two clocks agree.
+
 ## Testing
 
 - Framework: Jest via `@infinitetoken/jest-config/react-native` (jsdom `testEnvironment`), `@testing-library/react`
 - Mocks: `src/__mocks__/react-native.ts`, `src/__mocks__/react-native-svg.ts` - wired in `jest.config.cjs`'s `moduleNameMapper`
-- 328 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing
+- 363 tests across 14 suites (8 component suites + 6 util suites), all passing as of this writing, under `TZ=` America/New_York, Asia/Bangkok, Asia/Kolkata, Australia/Lord_Howe, America/Santiago, Europe/London and UTC
 - `.Month`'s colors can't be read in its component tests (the mock renders no styles), so its fill and text color are pinned through the utils they come from: `getAutoScaleColor`/`getColorForValue` and `getContrastTextColor` in colorUtils.test.ts, the grid in dateUtils.test.ts. Its tests pin today with `jest.useFakeTimers({ now })`
 - `.Grid` is the same: without `onCellPress` it's only Views, which the mock renders as nothing, so its windows, alignment, colors, pending cells, marks and labels are pinned in gridUtils.test.ts and the component tests press cells made buttons. The tests build times with local `Date`s (`new Date(2026, 9, 24, 9)`), so they pass in any time zone; checked on 2026-10-24 under `TZ=` Asia/Bangkok, Asia/Kolkata (half hour), America/New_York, Australia/Lord_Howe (half-hour daylight saving) and UTC
-- One bucketing, on the device's clock: `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above
+- One bucketing, on the device's clock unless a `timeZone` of `'utc'` is passed (see UTC days and hours): `bucketStart`/`buildTimeDataMap` start a day at local midnight and an hour at :00 (`setHours`/`setMinutes`), and `shiftBucket` steps days on the calendar, so `.Grid` and `.Timeline` agree with an app that counts local days (Lumber's heatmap once lit Thursday for Friday's 01:22 logs from UTC days). Until 2026-10-24 `.Timeline` floored epoch milliseconds and labeled with `getUTC*`, so on a UTC+7 device its days started at 07:00 and its labels read UTC times; it now steps by `shiftBucket` too, each cell as wide as its real span (a 23 or 25 hour day across a daylight saving change). Its tests pin a tapped hour and a tapped day to local boundaries, and pass under every `TZ=` above
 - Every part of `.Calendar` that lines up with the cells steps by `cellPitch` (utils/layoutUtils.ts). Until 2026-10-22 each used `cellSize + gutterSize` while a cell also took `cellPadding` on every side, so with the default theme the grid cut most of Saturday's row off, the day labels slid 2pt a row off their cells and the month labels 4pt a week. The component tests' `react-native` mock renders no styles, so this is pinned by layoutUtils.test.ts; it was checked by eye in Solitaire's web build
 - Coverage is collected on every run and held to the fleet's 70% global `coverageThreshold` from `@infinitetoken/jest-config` (no local override in `jest.config.cjs`); real coverage sits far above it (about 99% statements, 96% branches)
 - Don't use React Native APIs that 0.88 removed: `InteractionManager` throws an invariant on access in dev and is undefined in production (react-native-web still exports it, so web alone won't catch it). Defer work with the `requestIdleCallback` global instead; jsdom has none, so tests stub it on `globalThis` to cover that path

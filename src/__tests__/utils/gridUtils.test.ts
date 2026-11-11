@@ -206,3 +206,83 @@ describe('getCellLabel', () => {
     expect(getCellLabel(cells[2], 'log')).toBe('October 24, 2026, 08:00: no logs')
   })
 })
+
+// The same grids on UTC's clock. Run the suite under TZ= to make these bite: America/New_York for the daylight saving
+// changes (November 1 and March 8, 2026), Asia/Bangkok and America/New_York for days, Asia/Kolkata for hours
+describe('buildGridCells in UTC', () => {
+  const utc = (...fields: [number, number, number, number?, number?]) => new Date(Date.UTC(...fields))
+  const inUtc = (overrides: Partial<Parameters<typeof buildGridCells>[0]> = {}) => build({ timeZone: 'utc', end: utc(2026, 9, 24, 9, 41), ...overrides })
+  // The cells in time order, down each column in turn (filled down columns) with the blanks left out
+  const byColumn = (grid: (GridCell | null)[][]) => grid[0].flatMap((_, c) => grid.map((row) => row[c])).filter((cell): cell is GridCell => cell !== null)
+
+  it('ends a strip with the UTC hour under way, labeled in UTC', () => {
+    const cells = inUtc()[0] as GridCell[]
+    expect(starts(cells)).toEqual([utc(2026, 9, 24, 6), utc(2026, 9, 24, 7), utc(2026, 9, 24, 8), utc(2026, 9, 24, 9)])
+    expect(getCellLabel(cells[3], 'log', 'utc')).toBe('October 24, 2026, 09:00: no logs')
+  })
+
+  it('buckets points into UTC days and hours', () => {
+    // Either side of UTC midnight: the same local day west of Greenwich, and east of it
+    const days = inUtc({ granularity: 'day', columns: 2, end: utc(2026, 9, 25, 12), data: [point(utc(2026, 9, 24, 23, 30), 1), point(utc(2026, 9, 25, 0, 30), 2)] })[0] as GridCell[]
+    expect(starts(days)).toEqual([utc(2026, 9, 24), utc(2026, 9, 25)])
+    expect(days.map((cell) => cell.bucket.value)).toEqual([1, 2])
+    // One UTC hour, which a half-hour zone's local hours split
+    const hours = inUtc({ data: [point(utc(2026, 9, 24, 7, 20), 3), point(utc(2026, 9, 24, 7, 50), 4)] })[0] as GridCell[]
+    expect(hours.map((cell) => cell.bucket.value)).toEqual([0, 7, 0, 0])
+  })
+
+  it('reads minTime, pendingBefore and marks by UTC hour', () => {
+    const cells = inUtc({ minTime: utc(2026, 9, 24, 7, 30), pendingBefore: utc(2026, 9, 24, 8, 30), marks: [point(utc(2026, 9, 24, 9, 59), 1)] })[0] as GridCell[]
+    expect(cells.map((cell) => cell.unavailable)).toEqual([true, false, false, false])
+    expect(cells.map((cell) => cell.pending)).toEqual([false, true, false, false])
+    expect(cells.map((cell) => cell.mark)).toEqual([null, null, null, '#cf222e'])
+  })
+
+  it('starts each row of a week of hours at UTC midnight', () => {
+    const grid = inUtc({ rows: 7, columns: 24 })
+    expect(grid[0][0]?.bucket.startTime).toEqual(utc(2026, 9, 18))
+    expect(grid[6][0]?.bucket.startTime).toEqual(utc(2026, 9, 24))
+    expect(grid[6][9]?.bucket.startTime).toEqual(utc(2026, 9, 24, 9))
+    expect(grid[6][10]).toBeNull()
+  })
+
+  it("fills UTC days down columns as .Calendar's weeks", () => {
+    // 23:30 UTC on Wednesday, October 21 is already Thursday east of Greenwich
+    const grid = inUtc({ rows: 7, columns: 3, granularity: 'day', fillDirection: 'column', end: utc(2026, 9, 21, 23, 30) })
+    expect(starts(grid[0])).toEqual([utc(2026, 9, 4), utc(2026, 9, 11), utc(2026, 9, 18)])
+    expect(grid[3][2]?.bucket.startTime).toEqual(utc(2026, 9, 21))
+    expect(grid[4][2]).toBeNull()
+  })
+
+  // Six hours a column at 13:10 UTC: Saturday 12:00 and 18:00, then Sunday 00:00, 06:00 and 12:00, all UTC. On the device's
+  // clock in New York these columns would start at local 00:00, 06:00, 12:00 and 18:00 instead, and the hours either side
+  // of the change would repeat 01:00 (November) or skip 02:00 (March)
+  it.each([
+    ['ends', utc(2026, 9, 31, 12), utc(2026, 10, 1, 13, 10)],
+    ['starts', utc(2026, 2, 7, 12), utc(2026, 2, 8, 13, 10)]
+  ])('steps 6-hour columns and their hours in real time where US daylight saving %s', (_, first, end) => {
+    const grid = inUtc({ rows: 6, columns: 5, fillDirection: 'column', end })
+    const sixHours = 6 * 3600000
+    expect(starts(grid[0]).map((start) => start?.getTime())).toEqual([0, 1, 2, 3, 4].map((c) => first.getTime() + c * sixHours))
+    expect(grid[0].map((cell) => cell?.bucket.startTime.getUTCHours())).toEqual([12, 18, 0, 6, 12])
+    // Only the column opening the UTC day sets itself apart
+    expect(grid[0].map((cell) => cell?.boundary)).toEqual([false, false, true, false, false])
+
+    // Every hour once: 4 whole columns, then 12:00 and 13:00, each an hour after the last and an hour long
+    const cells = byColumn(grid)
+    expect(cells).toHaveLength(4 * 6 + 2)
+    cells.forEach((cell, k) => {
+      expect(cell.bucket.startTime.getTime()).toBe(first.getTime() + k * 3600000)
+      expect(cell.bucket.endTime.getTime() - cell.bucket.startTime.getTime()).toBe(3600000)
+    })
+    expect(grid[2][4]).toBeNull()
+
+    // Read aloud, the hours of the change's day are 00:00 to 13:00 UTC, none repeated or skipped
+    const labels = cells.slice(12).map((cell) => getCellLabel(cell, 'log', 'utc').match(/, (\d\d:\d\d): /)?.[1])
+    expect(labels).toEqual(Array.from({ length: 14 }, (__, h) => `${String(h).padStart(2, '0')}:00`))
+  })
+
+  it("keeps 'local' as the default", () => {
+    expect(build({ rows: 6, columns: 5, fillDirection: 'column' })).toEqual(build({ rows: 6, columns: 5, fillDirection: 'column', timeZone: 'local' }))
+  })
+})

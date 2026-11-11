@@ -195,3 +195,47 @@ describe('formatBucketLabel', () => {
     expect(formatBucketLabel(new Date(2026, 9, 24, 21, 7), 'minute')).toBe('October 24, 2026, 21:07')
   })
 })
+
+// UTC buckets on a device anywhere: run the suite under TZ= to make these bite (America/New_York and Asia/Bangkok for the
+// days, Asia/Kolkata for the hours, whose local hours start at :30 UTC)
+describe('in UTC', () => {
+  const utc = (...fields: [number, number, number, number?, number?, number?, number?]) => new Date(Date.UTC(...fields))
+
+  it('starts a day at UTC midnight, an hour at UTC :00 and a minute at :00 seconds', () => {
+    const moment = utc(2026, 9, 24, 23, 41, 30, 500)
+    expect(bucketStart(moment, 'day', 'utc')).toEqual(utc(2026, 9, 24))
+    expect(bucketStart(moment, 'hour', 'utc')).toEqual(utc(2026, 9, 24, 23))
+    expect(bucketStart(moment, 'minute', 'utc')).toEqual(utc(2026, 9, 24, 23, 41))
+  })
+
+  it('steps days 24 hours at a time across a US daylight saving change, where local days run 25 or 23', () => {
+    expect(shiftBucket(utc(2026, 10, 1), 'day', 1, 'utc')).toEqual(utc(2026, 10, 2))
+    expect(shiftBucket(utc(2026, 2, 9), 'day', -1, 'utc')).toEqual(utc(2026, 2, 8))
+    expect(shiftBucket(utc(2026, 10, 1, 5), 'hour', 3, 'utc')).toEqual(utc(2026, 10, 1, 8))
+  })
+
+  it('buckets points into UTC days and hours', () => {
+    const data: TimelineDataPoint[] = [
+      // Either side of UTC midnight: one local day west of Greenwich, and east of it
+      { timestamp: utc(2026, 9, 24, 23, 30).toISOString(), value: 1 },
+      { timestamp: utc(2026, 9, 25, 0, 30).toISOString(), value: 2 },
+      // One UTC hour, two local hours in a half-hour zone
+      { timestamp: utc(2026, 9, 25, 7, 20).toISOString(), value: 3 },
+      { timestamp: utc(2026, 9, 25, 7, 50).toISOString(), value: 4 }
+    ]
+    const days = buildTimeDataMap(data, 'day', 'utc')
+    expect([...days.entries()]).toEqual([
+      [Date.UTC(2026, 9, 24), 1],
+      [Date.UTC(2026, 9, 25), 9]
+    ])
+    const hours = buildTimeDataMap(data, 'hour', 'utc')
+    expect(hours.get(Date.UTC(2026, 9, 25, 7))).toBe(7)
+    expect(hours.size).toBe(3)
+  })
+
+  it('reads a bucket aloud in UTC', () => {
+    expect(formatBucketLabel(utc(2026, 9, 24), 'day', 'utc')).toBe('October 24, 2026')
+    expect(formatBucketLabel(utc(2026, 9, 24, 23), 'hour', 'utc')).toBe('October 24, 2026, 23:00')
+    expect(formatBucketLabel(utc(2026, 9, 25, 0, 7), 'minute', 'utc')).toBe('October 25, 2026, 00:07')
+  })
+})

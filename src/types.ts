@@ -5,6 +5,10 @@ import type { PressableProps, StyleProp, TextStyle, ViewStyle } from 'react-nati
  * accessibility props), e.g. @rific/feedback-press's, which adds a haptic on touch-down. */
 export type PressableComponent = React.ComponentType<PressableProps>
 
+/** The clock days and hours are read on: the device's ('local'), or UTC's ('utc'), which has no daylight saving, so
+ * every hour is an hour long and every day starts at UTC midnight. */
+export type TimeZone = 'local' | 'utc'
+
 export interface Segment {
   color: string
   value: number
@@ -134,6 +138,10 @@ export interface HeatmapProps {
   /** Draws every press (each day, and a tap elsewhere that clears the selection) through this in place of React Native's
    * Pressable, e.g. @rific/feedback-press's for a haptic on touch-down. A day's own press-in animation still runs. */
   pressable?: PressableComponent
+  /** The clock that says which day is today and which days startDate and endDate fall on: the device's ('local', the
+   * default) or UTC's ('utc'). Data dates, minDate and selectedDate are YYYY-MM-DD labels either way, so with 'utc' they
+   * should be UTC days. */
+  timeZone?: TimeZone
 }
 
 export interface MonthProps {
@@ -165,6 +173,9 @@ export interface MonthProps {
   /** Draws every press (each day and the arrows) through this in place of React Native's Pressable, e.g. @rific/feedback-press's
    * for a haptic on touch-down. */
   pressable?: PressableComponent
+  /** The clock that says which day is today: the device's ('local', the default) or UTC's ('utc'). The month, data dates,
+   * minDate, maxDate and selectedDate are labels either way. */
+  timeZone?: TimeZone
 }
 
 export interface GridTheme {
@@ -193,14 +204,19 @@ export interface GridProps {
   data: TimelineDataPoint[]
   rows?: number
   columns?: number
-  /** The length of time each cell covers, on the device's clock. */
+  /** The length of time each cell covers, on timeZone's clock. */
   granularity?: TimelineGranularity
   /** Time runs across each row ('row', like reading) or down each column ('column', like .Calendar's weeks). */
   fillDirection?: 'row' | 'column'
   /** Start each row (or column) on its own boundary when it spans exactly an hour of minutes, a day of hours or a week
-   * of days: :00, local midnight, or weekStartsOn. Defaults to on when there's more than one, so a 7 by 24 grid of
-   * hours is a week of days, and off for a single strip, which ends at the cell under way. */
+   * of days: :00, midnight, or weekStartsOn, on timeZone's clock. Defaults to on when there's more than one, so a 7 by 24
+   * grid of hours is a week of days, and off for a single strip, which ends at the cell under way. */
   align?: boolean
+  /** The clock cells, their alignment and their labels are on: the device's ('local', the default), where a day starts at
+   * local midnight and an hour at local :00, or UTC's ('utc'), where a day starts at UTC midnight, an hour is always
+   * 3,600,000 ms and a 6-hour line starts at 00:00, 06:00, 12:00 or 18:00 UTC. endTime, minTime, pendingBefore, selected
+   * and each point's timestamp are moments either way, bucketed on this clock. */
+  timeZone?: TimeZone
   /** The weekday a week of days starts on when aligned, 0 for Sunday through 6 for Saturday. */
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
   /** Defaults to now. The cell under way is the last one; aligned, the rest of its row stays blank. The grid doesn't move

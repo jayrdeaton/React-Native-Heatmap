@@ -72,6 +72,36 @@ describe('Heatmap.Grid', () => {
     }).not.toThrow()
   })
 
+  // Cells on UTC's clock. Run the suite under TZ= to make these bite (America/New_York for the daylight saving change,
+  // Asia/Bangkok and America/New_York for the day, Asia/Kolkata for the hour)
+  describe('timeZone utc', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    const utc = (...fields: [number, number, number, number?, number?]) => new Date(Date.UTC(...fields))
+
+    it('labels and reports each cell by its UTC hour', () => {
+      const onCellPress = jest.fn()
+      render(<Heatmap.Grid data={[{ timestamp: utc(2026, 9, 24, 7, 20).toISOString(), value: 4 }]} columns={4} granularity='hour' endTime={utc(2026, 9, 24, 9, 41)} onCellPress={onCellPress} valueLabel='log' timeZone='utc' />)
+      fireEvent.click(screen.getByLabelText('October 24, 2026, 07:00: 4 logs'))
+      expect(onCellPress).toHaveBeenCalledWith({ startTime: utc(2026, 9, 24, 7), endTime: utc(2026, 9, 24, 8), granularity: 'hour', value: 4 })
+    })
+
+    it('reads each hour once across the US change to standard time', () => {
+      // New York's clocks went from 01:59 EDT back to 01:00 EST at 06:00 UTC on November 1, 2026
+      render(<Heatmap.Grid data={[]} columns={6} granularity='hour' endTime={utc(2026, 10, 1, 8, 30)} onCellPress={jest.fn()} timeZone='utc' />)
+      expect(screen.getAllByRole('button').map((cell) => cell.getAttribute('aria-label'))).toEqual(['03', '04', '05', '06', '07', '08'].map((hour) => `November 1, 2026, ${hour}:00: no events`))
+    })
+
+    it('outlines the UTC day holding selected', () => {
+      const pressable = jest.spyOn(ReactNative, 'Pressable')
+      // 23:30 UTC on October 23 is October 23 in UTC, the 24th east of Greenwich
+      render(<Heatmap.Grid data={[]} columns={3} granularity='day' endTime={utc(2026, 9, 24, 12)} selected={utc(2026, 9, 23, 23, 30)} onCellPress={jest.fn()} timeZone='utc' />)
+      // Only the selected cell holds anything: its outline
+      const outlined = new Set(pressable.mock.calls.filter(([props]) => props.children).map(([props]) => props.accessibilityLabel))
+      expect([...outlined]).toEqual(['October 23, 2026: no events'])
+    })
+  })
+
   // Six hours a column, a day in four: at 09:41 on Saturday the columns start Friday 06:00, 12:00, 18:00, then Saturday
   // 00:00 and 06:00
   describe('6-hour columns', () => {

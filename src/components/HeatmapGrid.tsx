@@ -15,19 +15,19 @@ const SINGLE_ROW_HEIGHT = 10
 // Taller than a bar to the touch, so a thin one can still be pressed
 const BAR_HIT_SLOP = { top: 8, bottom: 8 }
 
-// Rows and columns of cells, each a local minute, hour or day ending with the one under way, as heat from the same
-// color scale as .Calendar. One row is a pulse line for a list row or a card; 7 by 24 hours a week by hour; 7 rows of
-// days filled down columns, .Calendar's shape; 6 rows of hours filled down columns, a day in 4 columns. Static unless
-// onCellPress is given.
-export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, minTime, selected, onCellPress, valueLabel = 'event', accessibilityLabel, style, pressable, animated = false, animationDirection = 'rtl', animationDuration = 350 }: GridProps) {
+// Rows and columns of cells, each a minute, hour or day ending with the one under way (on the device's clock, or UTC's
+// with timeZone='utc'), as heat from the same color scale as .Calendar. One row is a pulse line for a list row or a card;
+// 7 by 24 hours a week by hour; 7 rows of days filled down columns, .Calendar's shape; 6 rows of hours filled down
+// columns, a day in 4 columns. Static unless onCellPress is given.
+export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day', fillDirection = 'row', align, weekStartsOn = 0, endTime, color, colorScale: colorScaleProp, colorScheme, autoScale = true, theme: themeProp, marks, pendingBefore, minTime, selected, onCellPress, valueLabel = 'event', accessibilityLabel, style, pressable, animated = false, animationDirection = 'rtl', animationDuration = 350, timeZone = 'local' }: GridProps) {
   const Pressable = pressable ?? NativePressable
   const colorScale = useMemo(() => mergeColorScale(colorScaleProp, colorScheme, color), [colorScaleProp, colorScheme, color])
   const theme = useMemo(() => mergeGridTheme(themeProp, colorScheme), [themeProp, colorScheme])
-  const grid = buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end: endTime ?? new Date(), colorScale, autoScale, marks, markColor: theme.markColor, pendingBefore, minTime })
+  const grid = buildGridCells({ data, rows, columns, granularity, fillDirection, align, weekStartsOn, end: endTime ?? new Date(), colorScale, autoScale, marks, markColor: theme.markColor, pendingBefore, minTime, timeZone })
 
   const { backgroundColor, boundaryGap, cellHeight = rows === 1 ? SINGLE_ROW_HEIGHT : undefined, cellRadius, gap, markGap, markHeight, pendingColor = colorScale.colors[colorScale.colors.length - 1], selectedColor } = theme
   const shape = cellHeight === undefined ? styles.square : { height: cellHeight }
-  const selectedStart = selected ? bucketStart(selected, granularity).getTime() : null
+  const selectedStart = selected ? bucketStart(selected, granularity, timeZone).getTime() : null
   const isSelected = (cell: GridCell | null) => cell !== null && cell.bucket.startTime.getTime() === selectedStart
 
   // A line that opens a new day among lines of a share of one stands apart by boundaryGap: a column, filled down, or a
@@ -58,10 +58,10 @@ export function HeatmapGrid({ data, rows = 1, columns = 30, granularity = 'day',
   // Cells are keyed by their time, so when the grid moves on a cell keeps its look (and its fade) as it moves over a column
   const drawCell = (cell: GridCell | null, c: number) => {
     const key = cell ? cell.bucket.startTime.getTime() : `blank-${c}`
-    if (cell && animated) return <GridCellView key={key} start={cell.bucket.startTime.getTime()} fill={cell.fill} pending={cell.pending} unavailable={cell.unavailable} pendingColor={pendingColor} radius={cellRadius} height={cellHeight} marginLeft={columnApart(c)} selected={isSelected(cell)} selectedColor={selectedColor} delay={delayOf(c)} duration={animationDuration} label={pressableCell(cell) ? getCellLabel(cell, valueLabel) : undefined} onPress={pressableCell(cell) ? handlePress : undefined} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} pressable={Pressable} />
+    if (cell && animated) return <GridCellView key={key} start={cell.bucket.startTime.getTime()} fill={cell.fill} pending={cell.pending} unavailable={cell.unavailable} pendingColor={pendingColor} radius={cellRadius} height={cellHeight} marginLeft={columnApart(c)} selected={isSelected(cell)} selectedColor={selectedColor} delay={delayOf(c)} duration={animationDuration} label={pressableCell(cell) ? getCellLabel(cell, valueLabel, timeZone) : undefined} onPress={pressableCell(cell) ? handlePress : undefined} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} pressable={Pressable} />
     if (pressableCell(cell))
       return (
-        <Pressable key={key} onPress={() => onCellPress?.(cell.bucket)} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} accessibilityRole='button' accessibilityLabel={getCellLabel(cell, valueLabel)} style={({ pressed }) => [look(cell, c), pressed && styles.pressed]}>
+        <Pressable key={key} onPress={() => onCellPress?.(cell.bucket)} hitSlop={rows === 1 ? BAR_HIT_SLOP : undefined} accessibilityRole='button' accessibilityLabel={getCellLabel(cell, valueLabel, timeZone)} style={({ pressed }) => [look(cell, c), pressed && styles.pressed]}>
           {isSelected(cell) ? outline : null}
         </Pressable>
       )
