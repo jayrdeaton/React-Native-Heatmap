@@ -186,6 +186,8 @@ Values below the first threshold use `colors[0]`. Values at or above threshold `
     tooltipTextColor: '#ffffff',
     todayBorderColor: '#4183c4',
     selectedBorderColor: '#4183c4',
+    monthLabelHeight: 18,   // the month label row above the cells
+    dayLabelWidth: 28,      // the weekday label column beside them
   }}
 />
 ```
@@ -349,6 +351,55 @@ With `animated`, a cell whose value or color changes fades its next look in over
 | `pressable` | `PressableComponent` | React Native's `Pressable` | Draws each cell's press (with `onCellPress`) through this instead. See [Your own Pressable](#your-own-pressable-eg-haptics-on-every-tap). |
 | `timeZone` | `'local' \| 'utc'` | `'local'` | The clock the cells, their alignment and their labels are on: the device's, or UTC's, where a day starts at UTC midnight and every hour is an hour long. See [Time zones](#time-zones). |
 
+## Timeline
+
+`Heatmap.Timeline` is one strip of time to drag through and pinch to zoom. Zoomed out its cells are days, closer in hours, and closest minutes, with a time label every few cells along the top (`Mar 3`, `14:00`, `14:05`).
+
+```tsx
+import Heatmap from '@rific/heatmap'
+
+<Heatmap.Timeline data={events} zoom={20} onTimePress={(bucket) => showEvents(bucket.startTime, bucket.endTime)} />
+```
+
+- **Zoom** is pixels per hour. Under 4 the cells are days, from 4 to under 80 hours, and from 80 minutes. A pinch zooms about the point between the fingers, within `minZoom` and `maxZoom`, and calls `onZoomChange` as it goes. Changing the `zoom` prop moves it there.
+- **Dragging** scrolls the strip, with momentum after a flick. A tap (moving less than 5pt) calls `onTimePress` with the cell's `TimeBucket`.
+- **Its span** runs from the first point's `timestamp` to the last one's, unless `startTime` or `endTime` says otherwise (the last 24 hours with no data).
+- **Color** comes from the color scale, each cell scaled from zero against the busiest cell anywhere in the data at the zoom's granularity. Empty cells take the scale's `emptyColor`, or the theme's.
+- Cells are on the device's clock, a day across a daylight saving change 23 or 25 hours wide.
+- It takes every touch that starts on it (through React Native's `PanResponder`), so don't put it inside a view that scrolls the same way.
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `data` | `TimelineDataPoint[]` | required | Array of `{ timestamp, value }`. `timestamp` is an ISO date string. |
+| `startTime` | `Date` | The first point's time | Where the strip starts. |
+| `endTime` | `Date` | The last point's time | Where the strip ends. |
+| `zoom` | `number` | `20` | Pixels per hour to start at, and to move to when it changes. |
+| `minZoom` | `number` | `0.5` | The furthest a pinch zooms out. |
+| `maxZoom` | `number` | `2000` | The furthest a pinch zooms in. |
+| `onZoomChange` | `(zoom: number) => void` | - | Called with the zoom as a pinch changes it. |
+| `onTimePress` | `(bucket: TimeBucket) => void` | - | Called with `{ startTime, endTime, granularity, value }` for a tapped cell. |
+| `color` | `string` | - | Single accent color, as on `Heatmap.Calendar`. |
+| `colorScale` | `Partial<ColorScale>` | auto | As on `Heatmap.Calendar`. |
+| `colorScheme` | `'light' \| 'dark'` | - | Built-in light or dark palette and theme. |
+| `theme` | `Partial<TimelineTheme>` | `{ height: 60, labelHeight: 20, backgroundColor: 'transparent', labelColor: '#57606a', emptyColor: '#ebedf0' }` | The cells' height, the label row's height, and colors. Dark `colorScheme` makes `labelColor` `'#8b949e'` and `emptyColor` `'#161b22'`. |
+
+## Scatter
+
+`Heatmap.Scatter` draws each day's `segments` as dots: one dot for each unit of a segment's `value` (at most 50 a segment), in the segment's color, across the chart at the day's place in the range and spread down it. The spread is seeded by the day, so the dots keep their places from one render to the next. A point without `segments` draws nothing, and it takes no touches.
+
+```tsx
+<Heatmap.Scatter data={data} width={320} height={120} />
+```
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `data` | `DataPoint[]` | required | Points with `segments`, as for the `stacked` and `dots` cell modes. See [Segments](#segments). |
+| `startDate` | `Date` | A year ago | The left edge. Points before it are left out. |
+| `endDate` | `Date` | Today | The right edge. Points after it are left out. |
+| `width` | `number` | `300` | The chart's width. |
+| `height` | `number` | `150` | The chart's height. |
+| `dotRadius` | `number` | `2` | Each dot's radius. |
+
 ## Time zones
 
 Days and hours are on the device's clock by default. Pass `timeZone='utc'` to `Heatmap.Calendar`, `Heatmap.Month` or `Heatmap.Grid` to put them on UTC's instead, for an app that shows its times in UTC (a log viewer, say) and counts its data by UTC days and hours to match:
@@ -379,9 +430,12 @@ import Heatmap, {
   type HeatmapTheme,
   type MonthProps,
   type PressableComponent,
+  type ScatterProps,
   type TimeBucket,
   type TimelineDataPoint,
   type TimelineGranularity,
+  type TimelineProps,
+  type TimelineTheme,
   type TimeZone,
   type TooltipData,
 } from '@rific/heatmap'
