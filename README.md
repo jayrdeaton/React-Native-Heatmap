@@ -454,3 +454,7 @@ npm run test:watch  # Jest watch mode
 ## License
 
 MIT © [Jay Deaton](https://github.com/jayrdeaton)
+
+---
+
+Made by [Infinite Token](https://www.infinitetoken.com), the team behind [Lumber](https://lumber.infinitetoken.com): end-to-end encrypted logging.
